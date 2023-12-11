@@ -7,21 +7,25 @@ import pandas as pd
 
 def pull_prod_data():
 
-    url = 'http://bogc.dnrc.mt.gov/production/historical.zip'
-    file_name = 'historical.zip'
 
-    # extracting zipfile from URL
-    with urlopen(url) as response, open(file_name, 'wb') as out_file:
-        shutil.copyfileobj(response, out_file)
-
-        # extracting required file from zipfile
-        with zipfile.ZipFile(file_name) as zf:
-            zf.extract('histLeaseProd.tab')
-            zf.extract('histprodwell.tab')
-            zf.extract('histWellData.tab')
-
-    # deleting the zipfile from the directory
-    os.remove('historical.zip')
+    # TODO: update to retrieve data from this domain: https://bogapps.dnrc.mt.gov/dataminer/Leases/LeaseWells.aspx
+    # TODO: Retrieve list of all wells:
+    # TODO: Iterate through list, and retrieve data for each well
+    # url = 'http://bogc.dnrc.mt.gov/production/historical.zip'
+    # file_name = 'historical.zip'
+    #
+    # # extracting zipfile from URL
+    # with urlopen(url) as response, open(file_name, 'wb') as out_file:
+    #     shutil.copyfileobj(response, out_file)
+    #
+    #     # extracting required file from zipfile
+    #     with zipfile.ZipFile(file_name) as zf:
+    #         zf.extract('histLeaseProd.tab')
+    #         zf.extract('histprodwell.tab')
+    #         zf.extract('histWellData.tab')
+    #
+    # # deleting the zipfile from the directory
+    # os.remove('historical.zip')
 
     # loading data from the file
     lease_prod_df = pd.read_csv('histLeaseProd.tab', sep='\t')
@@ -30,7 +34,7 @@ def pull_prod_data():
 
     return lease_prod_df, well_prod_df, well_data_df
 
-def pull_ff_data(state_no=25):
+def pull_ff_data(state_name='Montana'):
 
     url = 'https://fracfocusdata.org/digitaldownload/FracFocusCSV.zip'
     file_name = 'FracFocusCSV.zip'
@@ -55,8 +59,8 @@ def pull_ff_data(state_no=25):
     FracFocusRegistry_df = pd.concat(FracFocusRegistry_dict, axis=0)
     FracFocusRegistry_df.head()
 
-    FracFocusRegistry_df_MT = FracFocusRegistry_df[FracFocusRegistry_df['StateNumber'] == state_no]
-    registryupload_df_MT = registryupload_df[registryupload_df['StateNumber'] == state_no]
+    FracFocusRegistry_df_MT = FracFocusRegistry_df[FracFocusRegistry_df['StateName'] == state_name]
+    registryupload_df_MT = registryupload_df[registryupload_df['StateName'] == state_name]
 
 
     return FracFocusRegistry_df_MT, registryupload_df_MT
