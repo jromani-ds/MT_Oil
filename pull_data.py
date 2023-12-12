@@ -7,32 +7,48 @@ import pandas as pd
 
 def pull_prod_data():
 
+    url = 'https://bogfiles.dnrc.mt.gov//Reporting/Production/Historical/MT_Historical_Production.zip'
+    file_name = 'MT_Historical_Production.zip'
 
-    # TODO: update to retrieve data from this domain: https://bogapps.dnrc.mt.gov/dataminer/Leases/LeaseWells.aspx
-    # TODO: Retrieve list of all wells:
-    # TODO: Iterate through list, and retrieve data for each well
-    # url = 'http://bogc.dnrc.mt.gov/production/historical.zip'
-    # file_name = 'historical.zip'
-    #
-    # # extracting zipfile from URL
-    # with urlopen(url) as response, open(file_name, 'wb') as out_file:
-    #     shutil.copyfileobj(response, out_file)
-    #
-    #     # extracting required file from zipfile
-    #     with zipfile.ZipFile(file_name) as zf:
-    #         zf.extract('histLeaseProd.tab')
-    #         zf.extract('histprodwell.tab')
-    #         zf.extract('histWellData.tab')
-    #
-    # # deleting the zipfile from the directory
-    # os.remove('historical.zip')
+    # extracting zipfile from URL
+    with urlopen(url) as response, open(file_name, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
+
+        # extracting required file from zipfile
+        with zipfile.ZipFile(file_name) as zf:
+            zf.extract('MT_HistoricalPRUProduction.tab')
+            zf.extract('MT_HistoricalWellProduction.tab')
+
+    # deleting the zipfile from the directory
+    os.remove('MT_Historical_Production.zip')
 
     # loading data from the file
-    lease_prod_df = pd.read_csv('histLeaseProd.tab', sep='\t')
-    well_prod_df = pd.read_csv('histprodwell.tab', sep='\t')
-    well_data_df = pd.read_csv('histWellData.tab', sep='\t')
+    lease_prod_df = pd.read_csv('MT_HistoricalPRUProduction.tab', sep='\t')
+    well_prod_df = pd.read_csv('MT_HistoricalWellProduction.tab', sep='\t')
 
-    return lease_prod_df, well_prod_df, well_data_df
+    return lease_prod_df, well_prod_df
+
+def pull_well_data():
+
+    url = 'https://bogfiles.dnrc.mt.gov//Reporting/Wells/MT_CompleteWellList.zip'
+    file_name = 'MT_CompleteWellList.zip'
+
+    # extracting zipfile from URL
+    with urlopen(url) as response, open(file_name, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
+
+        # extracting required file from zipfile
+        with zipfile.ZipFile(file_name) as zf:
+            zf.extract('MT_HistoricalWellList.tab')
+
+    # deleting the zipfile from the directory
+    os.remove('MT_CompleteWellList.zip')
+
+    # loading data from the file
+    well_data_df = pd.read_csv('MT_HistoricalWellList.tab', sep='\t')
+
+    return well_data_df
+
 
 def pull_ff_data(state_name='Montana'):
 
