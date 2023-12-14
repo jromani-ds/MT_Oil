@@ -5,8 +5,15 @@ import shutil
 import os
 import pandas as pd
 
-def pull_prod_data():
 
+def pull_prod_data():
+    """
+    Retrieves well and lease production data
+
+            Returns:
+                    lease_prod_df (pandas.DataFrame): lease production data in a dataframe
+                    well_prod_df (pandas.DataFrame: well production data in a dataframe
+    """
     url = 'https://bogfiles.dnrc.mt.gov//Reporting/Production/Historical/MT_Historical_Production.zip'
     file_name = 'MT_Historical_Production.zip'
 
@@ -28,8 +35,14 @@ def pull_prod_data():
 
     return lease_prod_df, well_prod_df
 
-def pull_well_data():
 
+def pull_well_data():
+    """
+    Retrieves well header data
+
+            Returns:
+                    well_data_df (pandas.DataFrame): dataframe with well header info
+    """
     url = 'https://bogfiles.dnrc.mt.gov//Reporting/Wells/MT_CompleteWellList.zip'
     file_name = 'MT_CompleteWellList.zip'
 
@@ -51,7 +64,16 @@ def pull_well_data():
 
 
 def pull_ff_data(state_name='Montana'):
+    """
+    Returns well header data
 
+            Parameters:
+                    state_name (str): name of the state to filter data
+
+            Returns:
+                    FracFocusRegistry_df (pandas.DataFrame): frac focus registry data in a dataframe
+                    registryupload_df (pandas.DataFrame: registry upload data in a dataframe
+    """
     url = 'https://fracfocusdata.org/digitaldownload/FracFocusCSV.zip'
     file_name = 'FracFocusCSV.zip'
 
@@ -75,8 +97,8 @@ def pull_ff_data(state_name='Montana'):
     FracFocusRegistry_df = pd.concat(FracFocusRegistry_dict, axis=0)
     FracFocusRegistry_df.head()
 
-    FracFocusRegistry_df_MT = FracFocusRegistry_df[FracFocusRegistry_df['StateName'] == state_name]
-    registryupload_df_MT = registryupload_df[registryupload_df['StateName'] == state_name]
+    if state_name:
+        FracFocusRegistry_df = FracFocusRegistry_df[FracFocusRegistry_df['StateName'] == state_name]
+        registryupload_df = registryupload_df[registryupload_df['StateName'] == state_name]
 
-
-    return FracFocusRegistry_df_MT, registryupload_df_MT
+    return FracFocusRegistry_df, registryupload_df
