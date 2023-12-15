@@ -6,7 +6,7 @@ def preprocess_well_data():
     # gets us the stuff we need to know about the well
     # to predict the production
 
-    # want |API | lat length | formation | 
+    # want |API | lat length | formation |
 
 
     return
