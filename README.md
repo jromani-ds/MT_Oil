@@ -12,4 +12,18 @@ Contains functions to pull data
 
 `pull_ff_data()` pull stimulaton data from Frac Focus.
 
+## `prod_model.py`
 
+Contains functions to munge data and create machine learning model to predict well production
+
+`preprocess_ff_data()` performs feature engineering on FF data to have well stimulation data.
+
+`preprocess_well_data()` munges well data to obtain well location data and drilling direction.
+
+`preprocess_prod()` manipulates production data to obtain cumulative production at specified intervals.
+
+`preprocess_prod()` manipulates production data to obtain cumulative production at specified intervals.
+
+`data_merge()` merges datasets to together to create a tabular data set to feed into ML pipeline. 
+
+`model_pipeline()` executes a ML pipeline to create predictions of well productivity. 
