@@ -2,10 +2,24 @@
 
 import pandas as pd
 
-def preprocess_ff_data():
+def preprocess_ff_data(df):
     #stub for FF data
-    return
 
+    #Drop duplicate reports
+    df.drop_duplicates(keep="last", inplace=True)
+
+    # group by API, and get total `Purpose` == 'Proppant' PercentHFJob
+    df=df[df.Purpose=='Proppant']
+
+    df = df.groupby('APINumber').agg({'PercentHFJob': 'sum',
+                                      'MassIngredient': 'sum',
+                                      'TVD': 'first',
+                                      'TotalBaseWaterVolume': 'first',
+                                      'TotalBaseNonWaterVolume': 'first'}).reset_index()
+
+    df = df.rename(columns={'APINumber': 'API_WellNo'}).set_index('API_WellNo')
+
+    return df
 
 def preprocess_well_data(well_data_df):
     # gets us the stuff we need to know about the well
@@ -49,7 +63,7 @@ def preprocess_prod(well_prod_df):
 
     return totals_df
 
-def data_merge(totals_df, well_df, interval=720):
+def data_merge(totals_df, well_df, ff_data, interval=720):
     # stub to merge well, prod, and ff data
 
     # merge well data, production data, and ff data
@@ -57,6 +71,7 @@ def data_merge(totals_df, well_df, interval=720):
     prod_data = prod_data[['API_WellNo', 'BBLS_OIL_COND', 'BBLS_WTR', 'MCF_GAS']].set_index('API_WellNo')
 
     data = pd.merge(well_df, prod_data, left_index=True, right_index=True)
+    data = pd.merge(data, ff_data, left_index=True, right_index=True)
 
     data['BOE'] = data['BBLS_OIL_COND'] + data['MCF_GAS']/5.8
 
@@ -115,3 +130,25 @@ def model_pipeline(data):
     # Evaluate the model
     mse = mean_squared_error(y_test, y_pred)
     print(f"Mean Squared Error: {mse}")
+
+
+if __name__ == "__main__":
+    from pull_data import pull_ff_data, pull_prod_data, pull_well_data
+
+    #Pull Data
+    lease_prod_df, well_prod_df = pull_prod_data()
+    well_data_df = pull_well_data()
+    FracFocusRegistry_df_MT, registryupload_df_MT = pull_ff_data(state_name='Montana')
+
+    #data preprocessing
+    ff_data = preprocess_ff_data(FracFocusRegistry_df_MT)
+    well_df = preprocess_well_data(well_data_df)
+    totals_df = preprocess_prod(well_prod_df)
+    data = data_merge(totals_df, well_df, ff_data, interval=720)
+
+    #ML pipeline
+    model_pipeline(data)
+
+
+
+
