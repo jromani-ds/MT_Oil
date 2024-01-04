@@ -1,6 +1,7 @@
 # stub for ml model pipeline
 
 import pandas as pd
+import numpy as np
 
 def preprocess_ff_data(df):
     #stub for FF data
@@ -9,13 +10,16 @@ def preprocess_ff_data(df):
     df.drop_duplicates(keep="last", inplace=True)
 
     # group by API, and get total `Purpose` == 'Proppant' PercentHFJob
-    df=df[df.Purpose=='Proppant']
+    df = df[df.Purpose=='Proppant']
 
     df = df.groupby('APINumber').agg({'PercentHFJob': 'sum',
                                       'MassIngredient': 'sum',
                                       'TVD': 'first',
                                       'TotalBaseWaterVolume': 'first',
                                       'TotalBaseNonWaterVolume': 'first'}).reset_index()
+
+    # Assume zero values for volume/proppant, etc. are missing
+    df.replace(0, np.nan, inplace=True)
 
     df = df.rename(columns={'APINumber': 'API_WellNo'}).set_index('API_WellNo')
 
@@ -47,18 +51,26 @@ def preprocess_prod(well_prod_df):
     # Loop through each factory and interval to calculate total output
     for well in df['API_WellNo'].unique():
         well_df = df[df['API_WellNo'] == well]
-        well_output = 0
-        for interval in intervals:
-            interval_oil = well_df[well_df['TOTAL_DAYS'] <= interval]['BBLS_OIL_COND'].sum()
-            interval_water = well_df[well_df['TOTAL_DAYS'] <= interval]['BBLS_WTR'].sum()
-            interval_gas = well_df[well_df['TOTAL_DAYS'] <= interval]['MCF_GAS'].sum()
-            totals[(well, interval)] = [interval_oil, interval_gas, interval_water]
+
+        for zone in well_df['ST_FMTN_CD'].unique():
+            zone_df = well_df[well_df['ST_FMTN_CD'] == zone]
+            zone_output= 0
+            for interval in intervals:
+                interval_oil = zone_df[zone_df['TOTAL_DAYS'] <= interval]['BBLS_OIL_COND'].sum()
+                interval_water = zone_df[zone_df['TOTAL_DAYS'] <= interval]['BBLS_WTR'].sum()
+                interval_gas = zone_df[zone_df['TOTAL_DAYS'] <= interval]['MCF_GAS'].sum()
+                totals[(well, zone, interval)] = [interval_oil, interval_gas, interval_water]
 
     # Convert totals dictionary to a DataFrame for better visualization
     totals_df = pd.DataFrame(list(totals.items()), columns=['API-Interval', 'Total Output'])
-    totals_df[['API_WellNo', 'Interval']] = pd.DataFrame(totals_df['API-Interval'].tolist(), index=totals_df.index)
+    totals_df[['API_WellNo', 'Zone', 'Interval']] = pd.DataFrame(totals_df['API-Interval'].tolist(), index=totals_df.index)
     totals_df[['BBLS_OIL_COND', 'BBLS_WTR', 'MCF_GAS']] = pd.DataFrame(totals_df['Total Output'].tolist(), index=totals_df.index)
-    totals_df = totals_df[['API_WellNo', 'Interval', 'BBLS_OIL_COND', 'BBLS_WTR', 'MCF_GAS']]
+    totals_df = totals_df[['API_WellNo',  'Zone', 'Interval', 'BBLS_OIL_COND', 'BBLS_WTR', 'MCF_GAS']]
+
+    # restrict to oil wells
+    totals_df = totals_df[(totals_df['BBLS_OIL_COND'])>0]
+
+    totals_df = totals_df.set_index('API_WellNo')
 
 
     return totals_df
@@ -68,14 +80,15 @@ def data_merge(totals_df, well_df, ff_data, interval=720):
 
     # merge well data, production data, and ff data
     prod_data = totals_df[totals_df.Interval == interval]
-    prod_data = prod_data[['API_WellNo', 'BBLS_OIL_COND', 'BBLS_WTR', 'MCF_GAS']].set_index('API_WellNo')
+    prod_data = prod_data[['Zone', 'BBLS_OIL_COND', 'BBLS_WTR', 'MCF_GAS']]
 
     data = pd.merge(well_df, prod_data, left_index=True, right_index=True)
     data = pd.merge(data, ff_data, left_index=True, right_index=True)
 
     data['BOE'] = data['BBLS_OIL_COND'] + data['MCF_GAS']/5.8
 
-    data = data[['Lat', 'Long', 'Slant', 'BOE']]
+    data = data[['Zone', 'Lat', 'Long', 'Slant', 'PercentHFJob', 'MassIngredient', 'TVD', 'TotalBaseWaterVolume',
+       'TotalBaseNonWaterVolume','BOE']]
     return data
 
 def model_pipeline(data):
@@ -86,7 +99,7 @@ def model_pipeline(data):
     from sklearn.impute import SimpleImputer
     from sklearn.preprocessing import StandardScaler, OneHotEncoder
     from sklearn.ensemble import RandomForestRegressor
-    from sklearn.metrics import mean_squared_error
+    from sklearn.metrics import mean_squared_error, r2_score
 
     X = data.drop('BOE', axis=1)
     y = data['BOE']
@@ -109,7 +122,8 @@ def model_pipeline(data):
     # Bundle preprocessing for numerical and categorical data
     preprocessor = ColumnTransformer(
         transformers=[
-            ('num', numerical_transformer, ['Lat', 'Long']),
+            ('num', numerical_transformer, ['Lat', 'Long', 'PercentHFJob', 'MassIngredient', 'TVD', 'TotalBaseWaterVolume',
+       'TotalBaseNonWaterVolume']),
             ('cat', categorical_transformer, ['Slant'])
         ])
 
@@ -131,6 +145,8 @@ def model_pipeline(data):
     mse = mean_squared_error(y_test, y_pred)
     print(f"Mean Squared Error: {mse}")
 
+    r2 = r2_score(y_test, y_pred)
+    print(f"R^2: {r2}")
 
 if __name__ == "__main__":
     from pull_data import pull_ff_data, pull_prod_data, pull_well_data
