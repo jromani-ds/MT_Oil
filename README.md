@@ -27,3 +27,9 @@ Contains functions to munge data and create machine learning model to predict we
 `data_merge()` merges datasets to together to create a tabular data set to feed into ML pipeline. 
 
 `model_pipeline()` executes a ML pipeline to create predictions of well productivity. 
+
+## `tests.py`
+
+Contains unit tests.
+
+`TestProdModel` class contains unit tests for `prod_model.py`
