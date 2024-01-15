@@ -153,7 +153,7 @@ def model_pipeline(data):
     from sklearn.impute import SimpleImputer
     from sklearn.preprocessing import StandardScaler, OneHotEncoder
     from sklearn.ensemble import RandomForestRegressor
-    from sklearn.metrics import mean_squared_error, r2_score
+    from sklearn.metrics import mean_absolute_error, r2_score
 
     X = data.drop("BOE", axis=1)
     y = data["BOE"]
@@ -213,8 +213,8 @@ def model_pipeline(data):
     y_pred = pipeline.predict(X_test)
 
     # Evaluate the model
-    mse = mean_squared_error(y_test, y_pred)
-    print(f"Mean Squared Error: {mse}")
+    mse = mean_absolute_error(y_test, y_pred)
+    print(f"Mean Absolute Error: {mse}")
 
     r2 = r2_score(y_test, y_pred)
     print(f"R^2: {r2}")
