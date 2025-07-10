@@ -74,7 +74,7 @@ def pull_ff_data(state_name="Montana"):
                     FracFocusRegistry_df (pandas.DataFrame): frac focus registry data in a dataframe
                     registryupload_df (pandas.DataFrame: registry upload data in a dataframe
     """
-    url = "https://fracfocusdata.org/digitaldownload/FracFocusCSV.zip"
+    url = "https://www.fracfocusdata.org/digitaldownload/FracFocusCSV.zip"
     file_name = "FracFocusCSV.zip"
 
     # extracting zipfile from URL
@@ -112,3 +112,8 @@ def pull_ff_data(state_name="Montana"):
         ]
 
     return FracFocusRegistry_df, registryupload_df
+
+if __name__ == "__main__":
+    lease_prod_df, well_prod_df = pull_prod_data()
+    well_data_df = pull_well_data()
+    FracFocusRegistry_df, registryupload_df = pull_ff_data()
