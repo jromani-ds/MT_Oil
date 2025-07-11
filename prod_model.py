@@ -219,6 +219,25 @@ def model_pipeline(data):
     r2 = r2_score(y_test, y_pred)
     print(f"R^2: {r2}")
 
+    #retrain on the full dataset
+    pipeline.fit(X, y)
+
+    # Make predictions on the full dataset
+    y_pred_full = pipeline.predict(X)
+
+    # Output Actuals vs. Predicted to CSV
+    # Create a DataFrame for actuals vs. predictions
+    results_df = pd.DataFrame(index=data.index, columns={
+        'Actual_Production': y,
+        'Predicted_Production': y_pred_full
+    })
+
+    # Save to CSV
+    output_filename = "actuals_vs_predicted.csv"
+    results_df.to_csv(output_filename, index=False)
+    print(f"Actuals vs. Predicted saved to {output_filename}")
+    
+
 
 if __name__ == "__main__":
     from pull_data import pull_ff_data, pull_prod_data, pull_well_data

@@ -1,6 +1,11 @@
 # MT_Oil
 A repo that provides guidance for extracting data from Montana Board of Oil and Gas Conservation, pulling the corresponding data from Frac Focus. Includes examples of Exploratory Data Analysis on the production data.
 
+You can step through the analysis and EDA using the `Montana_OilGas_Data_Prediction.ipynb` jupyter notebook.
+
+Alternatively, if you want to build the image to start making predictions, run `docker build -t mt-oil-model .`
+Train the model and return predictions using `docker run mt-oil-model` .
+
 
 ## `pull_data.py`
 
