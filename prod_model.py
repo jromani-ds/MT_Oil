@@ -225,16 +225,16 @@ def model_pipeline(data):
     # Make predictions on the full dataset
     y_pred_full = pipeline.predict(X)
 
-    # Output Actuals vs. Predicted to CSV
+# Output Actuals vs. Predicted to CSV
     # Create a DataFrame for actuals vs. predictions
-    results_df = pd.DataFrame(index=data.index, columns={
+    results_df = pd.DataFrame({
         'Actual_Production': y,
         'Predicted_Production': y_pred_full
-    })
+    }, index=data.index) 
 
     # Save to CSV
     output_filename = "actuals_vs_predicted.csv"
-    results_df.to_csv(output_filename, index=False)
+    results_df.to_csv(output_filename, index=True)
     print(f"Actuals vs. Predicted saved to {output_filename}")
     
 
