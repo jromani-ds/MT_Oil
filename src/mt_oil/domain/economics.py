@@ -3,6 +3,7 @@ from typing import List, Dict
 
 def calculate_npv(
     production_forecast: List[float],
+    historical_production: List[float] = [],
     oil_price: float = 70.0,
     gas_price: float = 3.5,
     discount_rate: float = 0.10,
@@ -13,14 +14,15 @@ def calculate_npv(
     nri: float = 0.80,  # Net Revenue Interest
     ad_valorem_tax: float = 0.05,
     severance_tax: float = 0.05,
+    abandonment_rate: float = 0.0,  # bbls per month (converted from day in caller or passed as month)
 ) -> Dict:
     """
-    Calculates the Net Present Value (NPV) of a well.
+    Calculates the Net Present Value (NPV) of a well used Full Cycle Economics.
+    Includes both Historical (Sunk) and Future (Forecast) production.
 
     Args:
         production_forecast: List of monthly oil production volumes (bbl).
-                             (Simplified: assuming gas is ratio or 0 for now, or passed differently)
-                             TODO: Accept gas stream. For now, assuming pure oil stream or doing BOE logic outside.
+        historical_production: List of monthly oil production volumes (bbl) - Historical.
         oil_price: WTI Price ($/bbl).
         gas_price: Henry Hub Price ($/mcf) - unused in this simple oil version.
         discount_rate: Annual discount rate (e.g. 0.10 for 10%).
@@ -31,12 +33,15 @@ def calculate_npv(
         nri: Net Revenue Interest (owner's share).
         ad_valorem_tax: Tax rate.
         severance_tax: Tax rate.
-
-    Returns:
-        Dict containing metrics: NPV, ROI, Payout Months.
+        abandonment_rate: Economic Limit (bbl/month).
     """
 
     monthly_discount_rate = (1 + discount_rate) ** (1 / 12) - 1
+
+    # Combine streams
+    # If historical is provided, we assume T=0 was at the start of history.
+    # CAPEX is spent at T=0.
+    full_stream = historical_production + production_forecast
 
     cash_flows = []
     cumulative_cash_flow = -capex
@@ -47,7 +52,16 @@ def calculate_npv(
 
     realized_oil_price = oil_price + oil_diff
 
-    for month, vol in enumerate(production_forecast, 1):
+    # Track total truncated reserves
+    total_eur = 0
+
+    for month, vol in enumerate(full_stream, 1):
+        # Abandonment Check (Economic Limit)
+        if vol < abandonment_rate:
+            break
+
+        total_eur += vol
+
         # Revenue
         gross_revenue = vol * realized_oil_price
         net_revenue = gross_revenue * nri
@@ -79,5 +93,5 @@ def calculate_npv(
         "NPV": npv,
         "ROI": roi,
         "Payout_Months": payout_month if payout_month else -1,
-        "EUR": sum(production_forecast),  # Estimated Ultimate Recovery
+        "EUR": total_eur,  # Estimated Ultimate Recovery (Truncated)
     }

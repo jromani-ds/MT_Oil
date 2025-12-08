@@ -1,40 +1,83 @@
-# MT_Oil
-A repo that provides guidance for extracting data from Montana Board of Oil and Gas Conservation, pulling the corresponding data from Frac Focus. Includes examples of Exploratory Data Analysis on the production data.
+# MT Oil Analytics Platform
 
-You can step through the analysis and EDA using the `Montana_OilGas_Data_Prediction.ipynb` jupyter notebook.
+A professional full-stack application for Oil & Gas data analysis, featuring advanced Decline Curve Analysis (DCA), economic modeling (NPV, ROI), and an interactive geospatial dashboard.
 
-Alternatively, if you want to build the image to start making predictions, run `docker build -t mt-oil-model .`
-Train the model and return predictions using `docker run mt-oil-model` .
+## 🏗 Architecture
 
+The project is structured as a modern full-stack application:
 
-## `pull_data.py`
+-   **Backend**: Python (FastAPI)
+    -   **API**: RESTful endpoints for well data, production history, and domain analysis.
+    -   **Domain Logic**: Specialized modules for DCA (Arps, Modified Arps, Duong) and Economics (Discounted Cash Flow).
+    -   **Data Processing**: High-performance vectorized loading of production data.
+-   **Frontend**: TypeScript (React + Vite)
+    -   **Map**: Interactive well plotting using `react-leaflet`.
+    -   **Dashboard**: Data visualization using `recharts` and `Tailwind CSS`.
+    -   **State**: Real-time integration with backend analysis endpoints.
 
-Contains functions to pull data
+## 🚀 Quick Start
 
-`pull_prod_data()` pulls production data from the Montana Board of Oil and Gas Conservation.
+### Prerequisites
+-   Python 3.9+
+-   Node.js 18+
 
-`pull_well_data()` pulls well data from the Montana Board of Oil and Gas Conservation.
+### 1. Backend Setup
+```bash
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-`pull_ff_data()` pull stimulaton data from Frac Focus.
+# Install dependencies (including dev tools)
+pip install -e ".[dev]"
 
-## `prod_model.py`
+# Run Tests to verify system integrity
+pytest tests/
 
-Contains functions to munge data and create machine learning model to predict well production
+# Start the API Server
+uvicorn src.mt_oil.api.main:app --reload
+```
+*API will run at `http://localhost:8000`*
 
-`preprocess_ff_data()` performs feature engineering on FF data to have well stimulation data.
+### 2. Frontend Setup
+```bash
+# Navigate to frontend directory
+cd frontend
 
-`preprocess_well_data()` munges well data to obtain well location data and drilling direction.
+# Install dependencies
+npm install
 
-`preprocess_prod()` manipulates production data to obtain cumulative production at specified intervals.
+# Start Development Server
+npm run dev
+```
+*Dashboard will run at `http://localhost:5173`*
 
-`preprocess_prod()` manipulates production data to obtain cumulative production at specified intervals.
+## 📚 Key Features
 
-`data_merge()` merges datasets to together to create a tabular data set to feed into ML pipeline.
+### Decline Curve Analysis (DCA)
+The system automatically fits decline curves to historical production data using optimization techniques (`scipy.optimize`).
+-   **Arps**: Standard hyperbolic decline.
+-   **Modified Arps**: Hyperbolic with exponential cutoff.
+-   **Duong**: Logic for unconventional fractured reservoirs.
 
-`model_pipeline()` executes a ML pipeline to create predictions of well productivity.
+### Economic Modeling
+Calculates key financial metrics based on DCA forecasts:
+-   **NPV**: Net Present Value (discounted cash flow).
+-   **ROI**: Return on Investment.
+-   **Payout**: Time to recover CAPEX.
+-   **Parameters**: Handles price differentials, interacting taxes (Ad Valorem, Severance), and variable operating costs.
 
-## `tests.py`
+## 🛠 Development
 
-Contains unit tests.
+### Code Quality
+We enforce strict code quality standards:
+-   **Formatting**: `black` (Python), `prettier` (coming soon).
+-   **Linting**: `ruff` (Python), `eslint` (TypeScript).
+-   **Hooks**: `pre-commit` runs these checks automatically.
 
-`TestProdModel` class contains unit tests for `prod_model.py`
+### Running Tests
+```bash
+pytest tests/
+```
+
+## 🤝 Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on branching, commit messages, and PRs.

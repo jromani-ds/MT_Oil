@@ -19,6 +19,7 @@ class DataStore:
     well_df: Optional[pd.DataFrame] = None
     prod_df: Optional[pd.DataFrame] = None
     totals_df: Optional[pd.DataFrame] = None
+    producing_wells_set: Optional[set] = None
 
 
 db = DataStore()
@@ -53,6 +54,32 @@ async def lifespan(app: FastAPI):
         # Sort index to ensure performance
         db.prod_df.sort_index(inplace=True)
 
+        # 3. Calculate "Producing" wells (Cumulative Oil > 0 OR Gas > 0)
+        print("Calculating production stats...")
+        sums = db.prod_df.groupby(level=0)[["BBLS_OIL_COND", "MCF_GAS"]].sum()
+        # Filter: At least 1 bbl of oil or 1 mcf of gas total
+        producing = sums[(sums["BBLS_OIL_COND"] > 0) | (sums["MCF_GAS"] > 0)]
+        db.producing_wells_set = set(producing.index)
+        print(f"Identified {len(db.producing_wells_set)} producing wells.")
+
+        # 4. Derive Primary Formation for each well
+        # Get the formation with the most records or just first one per well
+        # Reset index to get API as column
+        prod_reset = db.prod_df.reset_index()
+        # Group by API and take the mode (most common) or first of ST_FMTN_CD
+        # For simplicity/speed, let's take the first one found.
+        # A more robust way: value_counts().index[0] per group, but expensive.
+        # Let's drop duplicates on API keeping first.
+        unique_fmtn = prod_reset[["API_WellNo", "ST_FMTN_CD"]].drop_duplicates(
+            "API_WellNo"
+        )
+        unique_fmtn.set_index("API_WellNo", inplace=True)
+
+        # Merge Formation into well_df
+        # We use left join to keep all wells, fill na with 'Unknown'
+        db.well_df = db.well_df.join(unique_fmtn)
+        db.well_df["ST_FMTN_CD"] = db.well_df["ST_FMTN_CD"].fillna("Unknown")
+
         print(f"Data Loaded: {len(db.well_df)} wells.")
     except Exception as e:
         print(f"Error loading data: {e}")
@@ -79,17 +106,57 @@ def health_check():
     return {
         "status": "ok",
         "wells_loaded": len(db.well_df) if db.well_df is not None else 0,
+        "producing_wells": (
+            len(db.producing_wells_set) if db.producing_wells_set is not None else 0
+        ),
+    }
+
+
+@app.get("/filters")
+def get_filter_options():
+    if db.well_df is None:
+        raise HTTPException(status_code=503, detail="Data not loaded")
+
+    return {
+        "formations": sorted(db.well_df["ST_FMTN_CD"].unique().tolist()),
+        "well_types": sorted(db.well_df["Type"].unique().tolist()),
+        "slants": sorted(db.well_df["Slant"].unique().tolist()),
     }
 
 
 @app.get("/wells")
-def get_wells(limit: int = 100, skip: int = 0):
+def get_wells(
+    limit: int = 100,
+    skip: int = 0,
+    has_production: bool = False,
+    formation: Optional[str] = None,
+    well_type: Optional[str] = None,
+    slant: Optional[str] = None,
+):
     if db.well_df is None:
         raise HTTPException(status_code=503, detail="Data not loaded")
 
-    # Return list of wells with basic info (Lat, Long, API)
+    # Start with all wells
     # Reset index to make API_WellNo a column
-    filtered = db.well_df.reset_index().iloc[skip : skip + limit]
+    df = db.well_df.reset_index()
+
+    if has_production:
+        if db.producing_wells_set is None:
+            raise HTTPException(status_code=503, detail="Production data not loaded")
+        # Filter to only wells with ACTUAL production (>0)
+        df = df[df["API_WellNo"].isin(db.producing_wells_set)]
+
+    # Apply Filters
+    if formation:
+        df = df[df["ST_FMTN_CD"] == formation]
+
+    if well_type:
+        df = df[df["Type"] == well_type]
+
+    if slant:
+        df = df[df["Slant"] == slant]
+
+    filtered = df.iloc[skip : skip + limit]
     return filtered.to_dict(orient="records")
 
 
@@ -170,9 +237,10 @@ def fit_decline_curve(
 
     best_fit = fit_best_decline(t_months, q_oil, method=method)
 
-    # Generate forecast (next 24 months)
+    # Generate forecast (next 24 months / 2 years default)
+    FORECAST_MONTHS = 24
     last_t = t_months[-1]
-    forecast_t = np.arange(last_t + 1, last_t + 25)
+    forecast_t = np.arange(last_t + 1, last_t + FORECAST_MONTHS + 1)
 
     if best_fit["method"] == "arps":
         forecast_q = arps_decline(forecast_t, **best_fit["params"])
@@ -209,6 +277,7 @@ def run_economics(
     discount_rate: float = 0.10,
     capex: float = 6000000.0,
     opex: float = 10.0,
+    abandonment_rate_daily: float = 5.0,  # bbl/day
 ):
 
     # 1. Get Forecast (Auto-fit)
@@ -218,20 +287,26 @@ def run_economics(
 
     forecast_prod = fit_res["forecast"]["production"]
 
-    # 2. Run Economics on Forecast
-    # Note: Running econ on the *future* forecast only?
-    # Usually you run it on the whole lifecycle (Past + Future) for Lookback,
-    # or just Future for PDP (Proved Developed Producing) valuation.
-    # Let's do PDP Valuation (Future Cashflow).
-    # So CAPEX might be 0 for a PDP well (sunk cost), but let's allow user input
-    # in case they want to evaluate a "new" well with this type curve.
+    # 2. Get Historical Production
+    prod_hist = get_well_production(api_number)
+    # Convert list of dicts to list of floats (ordered by date)
+    # production is already sorted by date in get_well_production
+    historical_prod = [
+        r["BBLS_OIL_COND"] for r in prod_hist if r["BBLS_OIL_COND"] is not None
+    ]
 
+    # Convert daily abandonment to monthly (approx 30.4 days)
+    abandonment_rate_monthly = abandonment_rate_daily * 30.4
+
+    # 3. Run Economics on Forecast + History
     econ_metrics = calculate_npv(
         production_forecast=forecast_prod,
+        historical_production=historical_prod,
         oil_price=oil_price,
         discount_rate=discount_rate,
         capex=capex,
         opex_per_bbl=opex,
+        abandonment_rate=abandonment_rate_monthly,
     )
 
     return econ_metrics

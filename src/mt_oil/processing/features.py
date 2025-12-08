@@ -50,8 +50,9 @@ def preprocess_well_data(well_data_df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: Processed well data indexed by API_WellNo.
     """
-    # want |API | lat length | formation |
-    well_df = well_data_df[["API_WellNo", "Lat", "Long", "Slant"]].set_index(
+    # want |API | lat length | formation | type |
+    # Adding 'Type' to support filtering
+    well_df = well_data_df[["API_WellNo", "Lat", "Long", "Slant", "Type"]].set_index(
         "API_WellNo"
     )
     return well_df
