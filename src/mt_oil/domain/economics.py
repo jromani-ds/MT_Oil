@@ -1,5 +1,5 @@
-import numpy as np
 from typing import List, Dict
+
 
 def calculate_npv(
     production_forecast: List[float],
@@ -10,9 +10,9 @@ def calculate_npv(
     opex_per_bbl: float = 10.0,
     oil_diff: float = -5.0,
     gas_diff: float = -0.5,
-    nri: float = 0.80, # Net Revenue Interest
+    nri: float = 0.80,  # Net Revenue Interest
     ad_valorem_tax: float = 0.05,
-    severance_tax: float = 0.05
+    severance_tax: float = 0.05,
 ) -> Dict:
     """
     Calculates the Net Present Value (NPV) of a well.
@@ -35,49 +35,49 @@ def calculate_npv(
     Returns:
         Dict containing metrics: NPV, ROI, Payout Months.
     """
-    
-    monthly_discount_rate = (1 + discount_rate) ** (1/12) - 1
-    
+
+    monthly_discount_rate = (1 + discount_rate) ** (1 / 12) - 1
+
     cash_flows = []
     cumulative_cash_flow = -capex
     payout_month = None
-    
+
     # Time 0: CAPEX
     cash_flows.append(-capex)
-    
+
     realized_oil_price = oil_price + oil_diff
-    
+
     for month, vol in enumerate(production_forecast, 1):
         # Revenue
         gross_revenue = vol * realized_oil_price
         net_revenue = gross_revenue * nri
-        
+
         # Taxes
         taxes = gross_revenue * (ad_valorem_tax + severance_tax)
-        
+
         # OPEX
-        opex = vol * opex_per_bbl # + fixed montly opex? Keeping simple.
-        
+        opex = vol * opex_per_bbl  # + fixed montly opex? Keeping simple.
+
         # Net Cash Flow
         ncf = net_revenue - taxes - opex
-        
+
         cash_flows.append(ncf)
         cumulative_cash_flow += ncf
-        
+
         if payout_month is None and cumulative_cash_flow >= 0:
             payout_month = month
-            
+
     # Calculate NPV
     # NPV = Sum( CF_t / (1+r)^t )
     npv = -capex
     for t, cf in enumerate(cash_flows[1:], 1):
-         npv += cf / ((1 + monthly_discount_rate) ** t)
-         
+        npv += cf / ((1 + monthly_discount_rate) ** t)
+
     roi = (sum(cash_flows) + capex) / capex
-    
+
     return {
         "NPV": npv,
         "ROI": roi,
         "Payout_Months": payout_month if payout_month else -1,
-        "EUR": sum(production_forecast) # Estimated Ultimate Recovery
+        "EUR": sum(production_forecast),  # Estimated Ultimate Recovery
     }

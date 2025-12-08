@@ -29,9 +29,9 @@ Contains functions to munge data and create machine learning model to predict we
 
 `preprocess_prod()` manipulates production data to obtain cumulative production at specified intervals.
 
-`data_merge()` merges datasets to together to create a tabular data set to feed into ML pipeline. 
+`data_merge()` merges datasets to together to create a tabular data set to feed into ML pipeline.
 
-`model_pipeline()` executes a ML pipeline to create predictions of well productivity. 
+`model_pipeline()` executes a ML pipeline to create predictions of well productivity.
 
 ## `tests.py`
 

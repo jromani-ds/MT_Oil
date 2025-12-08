@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 import pandas as pd
-import numpy as np
+
 
 def train_and_evaluate(data: pd.DataFrame) -> Pipeline:
     """
@@ -84,5 +84,5 @@ def train_and_evaluate(data: pd.DataFrame) -> Pipeline:
     # Retrain on full dataset
     print("Retraining on full dataset...")
     pipeline.fit(X, y)
-    
+
     return pipeline

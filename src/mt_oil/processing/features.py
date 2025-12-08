@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+
 def preprocess_ff_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     Preprocesses FracFocus data to aggregate proppant and fluid volumes by API Number.
@@ -92,23 +93,23 @@ def preprocess_prod_data(well_prod_df: pd.DataFrame) -> pd.DataFrame:
         # Filter for days <= interval
         mask = df["TOTAL_DAYS"] <= interval
         interval_data = df[mask]
-        
+
         # Group by API and Zone
-        grouped = interval_data.groupby(["API_WellNo", "ST_FMTN_CD"]).agg({
-            "BBLS_OIL_COND": "sum",
-            "BBLS_WTR": "sum",
-            "MCF_GAS": "sum"
-        }).reset_index()
-        
+        grouped = (
+            interval_data.groupby(["API_WellNo", "ST_FMTN_CD"])
+            .agg({"BBLS_OIL_COND": "sum", "BBLS_WTR": "sum", "MCF_GAS": "sum"})
+            .reset_index()
+        )
+
         grouped["Interval"] = interval
         results.append(grouped)
-    
+
     # Concatenate all intervals
     totals_df = pd.concat(results, axis=0)
-    
+
     # Rename columns to match expected output format
     totals_df = totals_df.rename(columns={"ST_FMTN_CD": "Zone"})
-    
+
     totals_df = totals_df[
         ["API_WellNo", "Zone", "Interval", "BBLS_OIL_COND", "BBLS_WTR", "MCF_GAS"]
     ]
@@ -121,7 +122,12 @@ def preprocess_prod_data(well_prod_df: pd.DataFrame) -> pd.DataFrame:
     return totals_df
 
 
-def merge_data(totals_df: pd.DataFrame, well_df: pd.DataFrame, ff_data: pd.DataFrame, interval: int = 720) -> pd.DataFrame:
+def merge_data(
+    totals_df: pd.DataFrame,
+    well_df: pd.DataFrame,
+    ff_data: pd.DataFrame,
+    interval: int = 720,
+) -> pd.DataFrame:
     """
     Merges processed production, well, and FracFocus data into a single dataset for modeling.
 
@@ -159,9 +165,9 @@ def merge_data(totals_df: pd.DataFrame, well_df: pd.DataFrame, ff_data: pd.DataF
         "TotalBaseNonWaterVolume",
         "BOE",
     ]
-    
+
     # Return only keeping columns if they exist (handling potential missing ones gracefully?)
     # For now, strict as per requirement to reproduce functionality.
     data = data[columns_to_keep]
-    
+
     return data

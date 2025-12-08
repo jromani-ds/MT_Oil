@@ -5,12 +5,13 @@ import os
 import pandas as pd
 from typing import Tuple, Dict
 
+
 def pull_prod_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Retrieves well and lease production data from the Montana Board of Oil and Gas Conservation.
 
     Returns:
-        Tuple[pd.DataFrame, pd.DataFrame]: 
+        Tuple[pd.DataFrame, pd.DataFrame]:
             - lease_prod_df: DataFrame containing lease production data.
             - well_prod_df: DataFrame containing well production data.
     """
@@ -19,7 +20,9 @@ def pull_prod_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
 
     try:
         # Check if extracted files already exist
-        if os.path.exists("MT_HistoricalPRUProduction.tab") and os.path.exists("MT_HistoricalWellProduction.tab"):
+        if os.path.exists("MT_HistoricalPRUProduction.tab") and os.path.exists(
+            "MT_HistoricalWellProduction.tab"
+        ):
             print("Production data files found locally. Skipping download.")
         else:
             print("Downloading production data...")
@@ -34,11 +37,15 @@ def pull_prod_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
 
         # loading data from the file
         print("Loading production data into DataFrames...")
-        lease_prod_df = pd.read_csv("MT_HistoricalPRUProduction.tab", sep="\t", low_memory=False)
-        well_prod_df = pd.read_csv("MT_HistoricalWellProduction.tab", sep="\t", low_memory=False)
+        lease_prod_df = pd.read_csv(
+            "MT_HistoricalPRUProduction.tab", sep="\t", low_memory=False
+        )
+        well_prod_df = pd.read_csv(
+            "MT_HistoricalWellProduction.tab", sep="\t", low_memory=False
+        )
 
         return lease_prod_df, well_prod_df
-    
+
     finally:
         # Cleanup zip only if it exists
         if os.path.exists(file_name):
@@ -65,12 +72,14 @@ def pull_well_data() -> pd.DataFrame:
             zf.extract("MT_HistoricalWellList.tab")
 
         # loading data from the file
-        well_data_df = pd.read_csv("MT_HistoricalWellList.tab", sep="\t", low_memory=False)
+        well_data_df = pd.read_csv(
+            "MT_HistoricalWellList.tab", sep="\t", low_memory=False
+        )
 
         return well_data_df
 
     finally:
-         if os.path.exists(file_name):
+        if os.path.exists(file_name):
             os.remove(file_name)
 
 
