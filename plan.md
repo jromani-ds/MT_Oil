@@ -22,11 +22,13 @@ _Living plan incorporating current decisions: dev-first, sample data seed, publi
 - [x] Terraform-managed dev and prod environments
 - [x] GitHub Actions CI/CD with Workload Identity Federation
 - [x] Cloud Run service, Cloud Run Job, Cloud Scheduler, BigQuery, GCS scaffolding
-- [ ] Bootstrap resources verified
-- [ ] Data uploaded to BigQuery
-- [ ] Model artifact uploaded to GCS
-- [ ] Several Terraform / backend bugs block a clean first deploy
+- [x] Bootstrap resources verified
+- [x] Data uploaded to BigQuery (dev sample, prod pending)
+- [x] Model artifact uploaded to GCS (dev, prod pending)
+- [x] Terraform / backend blockers fixed
+- [ ] Dev deployment completing (App Engine API activation in progress)
 - [ ] Prod monitoring not yet applied
+- [ ] Project-agnostic IaC refactor not yet started
 
 ## Phase 0 — Bootstrap Verification
 
@@ -149,6 +151,37 @@ When ready to move from `master` to `main`:
 3. Update `.github/workflows/ci.yml` PR target branches to include `main`.
 4. Update `.pre-commit-config.yaml` to block `main` (and/or replace `master`).
 5. Retire `master` after a transition period.
+
+## Phase 7 — Project-Agnostic IaC Refactor (Backlog)
+
+Goal: make the repository fully reusable by other GCP projects while keeping the current `my-project-1508887546225` deployment working.
+
+### System Instruction
+
+When generating, reviewing, or refactoring GCP Infrastructure-as-Code (IaC) for this repository, enforce total project agnosticism by requiring parameterization, dynamic naming, and zero hardcoded secrets.
+
+- Never hardcode GCP Project IDs, Regions, Zones, or Account IDs.
+- Define all environment-specific inputs as uninitialized variables in `variables.tf` and provide a corresponding `terraform.tfvars.example` file.
+- Derive globally unique resource names (GCS buckets, Artifact Registries) from `var.project_id` or a `random_id` suffix.
+- Fetch project metadata such as the numerical Project Number using `data "google_project"` rather than hardcoding it.
+- Keep backend state blocks empty by default so local execution succeeds without pre-existing remote buckets; remote state should be configured via `terraform init -backend-config="..."`.
+- Explicitly enable required GCP APIs using `google_project_service` resources with `disable_on_destroy = false`.
+- In CI/CD workflows, avoid long-lived service account JSON keys; use Workload Identity Federation (`actions/checkout@v4`, `google-github-actions/auth@v2`), and rely on GitHub repository secrets/variables for any per-project values.
+
+### Phase 7 Tasks
+
+| #   | Task                                                                                                                                                                                                                         | Status      |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1   | **Enforce no new hardcoded project IDs / secrets.** Any new Terraform, workflow, or script change must use variables, data sources, or WIF.                                                                                  | In progress |
+| 2   | **Refactor existing hardcoded IDs.** Replace every literal `my-project-1508887546225`, region, zone, and account ID in `infra/` and `.github/workflows/` with variables + `terraform.tfvars` / GitHub variables. Candidates: | Pending     |
+|     | - `infra/environments/dev/main.tf` backend bucket                                                                                                                                                                            |             |
+|     | - `infra/environments/prod/main.tf` backend bucket                                                                                                                                                                           |             |
+|     | - `.github/workflows/deploy.yml` project ID, region, service account, WIF provider, Artifact Registry URL                                                                                                                    |             |
+|     | - `infra/bootstrap/bootstrap.sh` project ID and region defaults                                                                                                                                                              |             |
+|     | - `scripts/seed_bigquery.py` default project/dataset                                                                                                                                                                         |             |
+| 3   | **Add `terraform.tfvars.example`** files for dev and prod with all required variables documented (current values commented out as examples).                                                                                 | In progress |
+| 4   | **Add GitHub variables documentation** for the workflow inputs currently hardcoded in `deploy.yml`.                                                                                                                          | Pending     |
+| 5   | **Validate reuse.** Fork a fresh GCP project, populate `terraform.tfvars`, set GitHub variables, and confirm a full deploy works.                                                                                            | Pending     |
 
 ## Cost Model
 
