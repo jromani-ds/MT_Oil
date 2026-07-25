@@ -1,0 +1,120 @@
+resource "google_bigquery_dataset" "this" {
+  project       = var.project_id
+  dataset_id    = var.dataset_id
+  friendly_name = var.dataset_id
+  description   = var.description
+  location      = var.location
+  labels        = var.labels
+}
+
+resource "google_bigquery_table" "wells" {
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "wells"
+  project             = var.project_id
+  deletion_protection = true
+
+  clustering = ["api_wellno"]
+
+  schema = jsonencode([
+    { name = "api_wellno", type = "STRING", mode = "REQUIRED" },
+    { name = "well_name", type = "STRING", mode = "NULLABLE" },
+    { name = "operator", type = "STRING", mode = "NULLABLE" },
+    { name = "latitude", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "longitude", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "type", type = "STRING", mode = "NULLABLE" },
+    { name = "slant", type = "STRING", mode = "NULLABLE" },
+    { name = "dtd", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "total_depth", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "county", type = "STRING", mode = "NULLABLE" },
+    { name = "field", type = "STRING", mode = "NULLABLE" },
+    { name = "formation", type = "STRING", mode = "NULLABLE" },
+    { name = "spud_date", type = "DATE", mode = "NULLABLE" },
+    { name = "completion_date", type = "DATE", mode = "NULLABLE" },
+    { name = "status", type = "STRING", mode = "NULLABLE" },
+    { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" },
+  ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
+}
+
+resource "google_bigquery_table" "production_monthly" {
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "production_monthly"
+  project             = var.project_id
+  deletion_protection = true
+
+  time_partitioning {
+    type  = "MONTH"
+    field = "rpt_date"
+  }
+
+  clustering = ["api_wellno"]
+
+  schema = jsonencode([
+    { name = "api_wellno", type = "STRING", mode = "REQUIRED" },
+    { name = "rpt_date", type = "DATE", mode = "REQUIRED" },
+    { name = "st_fmtn_cd", type = "STRING", mode = "NULLABLE" },
+    { name = "bbls_oil_cond", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "mcf_gas", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "bbls_wtr", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "days_prod", type = "INT64", mode = "NULLABLE" },
+    { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" },
+  ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
+}
+
+resource "google_bigquery_table" "frac_focus" {
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "frac_focus"
+  project             = var.project_id
+  deletion_protection = true
+
+  clustering = ["api_wellno"]
+
+  schema = jsonencode([
+    { name = "api_wellno", type = "STRING", mode = "REQUIRED" },
+    { name = "job_start_date", type = "DATE", mode = "NULLABLE" },
+    { name = "state", type = "STRING", mode = "NULLABLE" },
+    { name = "county", type = "STRING", mode = "NULLABLE" },
+    { name = "total_water_volume", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "total_proppant", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "td", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "tvd", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" },
+  ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
+}
+
+resource "google_bigquery_table" "analysis_outputs" {
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "analysis_outputs"
+  project             = var.project_id
+  deletion_protection = true
+
+  time_partitioning {
+    type  = "MONTH"
+    field = "created_at"
+  }
+
+  clustering = ["api_wellno", "analysis_type"]
+
+  schema = jsonencode([
+    { name = "api_wellno", type = "STRING", mode = "REQUIRED" },
+    { name = "analysis_type", type = "STRING", mode = "REQUIRED" },
+    { name = "version", type = "STRING", mode = "NULLABLE" },
+    { name = "payload", type = "JSON", mode = "NULLABLE" },
+    { name = "created_at", type = "TIMESTAMP", mode = "NULLABLE" },
+  ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
+}
