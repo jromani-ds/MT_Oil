@@ -11,6 +11,14 @@ resource "google_storage_bucket" "this" {
     enabled = var.versioning
   }
 
+  dynamic "website" {
+    for_each = var.website != null ? [var.website] : []
+    content {
+      main_page_suffix = website.value.main_page_suffix
+      not_found_page   = website.value.not_found_page
+    }
+  }
+
   lifecycle_rule {
     condition {
       age = var.lifecycle_age_days

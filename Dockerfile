@@ -9,13 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency definition first to maximize layer caching.
-COPY pyproject.toml ./
-COPY src/mt_oil/__init__.py ./src/mt_oil/__init__.py
-
-# Install the package and its dependencies. Wheels are cached in pip.
+# Copy dependency definition and source, then install the package.
+COPY pyproject.toml README.md ./
+COPY src ./src
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e "."
+    pip install --no-cache-dir .
 
 # --- Runtime image ---
 FROM python:3.11-slim
@@ -32,12 +30,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Copy installed Python packages from builder.
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
-COPY --from=builder /app/src ./src
 
-# Copy application source.
-COPY src ./src
-
-# Install any system runtime deps (none needed for slim python + numpy wheels).
 RUN chown -R appuser:appuser /app
 USER appuser
 

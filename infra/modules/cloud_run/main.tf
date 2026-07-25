@@ -1,8 +1,9 @@
 resource "google_cloud_run_v2_service" "this" {
-  name     = var.service_name
-  project  = var.project_id
-  location = var.region
-  ingress  = var.ingress
+  name                = var.service_name
+  project             = var.project_id
+  location            = var.region
+  ingress             = var.ingress
+  deletion_protection = var.deletion_protection
 
   template {
     service_account = var.service_account_email
@@ -26,9 +27,14 @@ resource "google_cloud_run_v2_service" "this" {
         container_port = 8000
       }
 
-      env {
-        name  = "PORT"
-        value = "8000"
+      startup_probe {
+        initial_delay_seconds = 30
+        period_seconds        = 30
+        timeout_seconds       = 10
+        failure_threshold     = 15
+        tcp_socket {
+          port = 8000
+        }
       }
 
       dynamic "env" {

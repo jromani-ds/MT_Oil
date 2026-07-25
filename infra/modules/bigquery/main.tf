@@ -8,9 +8,10 @@ resource "google_bigquery_dataset" "this" {
 }
 
 resource "google_bigquery_table" "wells" {
-  dataset_id = google_bigquery_dataset.this.dataset_id
-  table_id   = "wells"
-  project    = var.project_id
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "wells"
+  project             = var.project_id
+  deletion_protection = true
 
   clustering = ["api_wellno"]
 
@@ -32,12 +33,17 @@ resource "google_bigquery_table" "wells" {
     { name = "status", type = "STRING", mode = "NULLABLE" },
     { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" },
   ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
 }
 
 resource "google_bigquery_table" "production_monthly" {
-  dataset_id = google_bigquery_dataset.this.dataset_id
-  table_id   = "production_monthly"
-  project    = var.project_id
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "production_monthly"
+  project             = var.project_id
+  deletion_protection = true
 
   time_partitioning {
     type  = "MONTH"
@@ -56,12 +62,17 @@ resource "google_bigquery_table" "production_monthly" {
     { name = "days_prod", type = "INT64", mode = "NULLABLE" },
     { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" },
   ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
 }
 
 resource "google_bigquery_table" "frac_focus" {
-  dataset_id = google_bigquery_dataset.this.dataset_id
-  table_id   = "frac_focus"
-  project    = var.project_id
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "frac_focus"
+  project             = var.project_id
+  deletion_protection = true
 
   clustering = ["api_wellno"]
 
@@ -76,12 +87,17 @@ resource "google_bigquery_table" "frac_focus" {
     { name = "tvd", type = "FLOAT64", mode = "NULLABLE" },
     { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" },
   ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
 }
 
 resource "google_bigquery_table" "analysis_outputs" {
-  dataset_id = google_bigquery_dataset.this.dataset_id
-  table_id   = "analysis_outputs"
-  project    = var.project_id
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "analysis_outputs"
+  project             = var.project_id
+  deletion_protection = true
 
   time_partitioning {
     type  = "MONTH"
@@ -97,4 +113,8 @@ resource "google_bigquery_table" "analysis_outputs" {
     { name = "payload", type = "JSON", mode = "NULLABLE" },
     { name = "created_at", type = "TIMESTAMP", mode = "NULLABLE" },
   ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
 }

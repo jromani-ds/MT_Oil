@@ -5,9 +5,6 @@ table from the public FracFocus digital download. It is intentionally simple,
 stateless, and idempotent: each run truncates and reloads the table.
 """
 
-import os
-import re
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 

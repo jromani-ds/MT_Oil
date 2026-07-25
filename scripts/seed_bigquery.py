@@ -156,7 +156,6 @@ def upload_table(
         table_ref,
         job_config=bigquery.LoadJobConfig(
             write_disposition=write_disposition,
-            schema_update_options=["ALLOW_FIELD_ADDITION"],
         ),
     )
     job.result()

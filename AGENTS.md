@@ -22,8 +22,10 @@ Full-stack Oil & Gas analytics application built as a public portfolio / showcas
                               │
         ┌─────────────────────┼─────────────────────┐
         ▼                     ▼                     ▼
-  Firebase Hosting      Cloud Run            BigQuery + GCS
+  GCS static website    Cloud Run            BigQuery + GCS
   (static frontend)     (FastAPI backend)    (data warehouse + lake)
+
+> Note: Firebase Hosting was replaced by a Cloud Storage static website bucket because the Firebase Management API was not provisionable in this GCP project under Terraform.
 ```
 
 ## Tech Stack
@@ -93,7 +95,7 @@ This is a personal demo with a strict ~$10/month budget. Key limits:
 
 ## Deployment Environments
 
-| Environment | Branch | Cloud Run Service | BigQuery Dataset | Firebase Site          |
+| Environment | Branch | Cloud Run Service | BigQuery Dataset | GCS Static Site Bucket |
 | ----------- | ------ | ----------------- | ---------------- | ---------------------- |
 | Dev         | `dev`  | `mt-oil-api-dev`  | `mt_oil_dev`     | `mt-oil-dashboard-dev` |
 | Prod        | `main` | `mt-oil-api-prod` | `mt_oil_prod`    | `mt-oil-dashboard`     |

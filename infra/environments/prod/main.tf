@@ -50,6 +50,12 @@ resource "google_project_iam_member" "runtime_bigquery" {
   member  = "serviceAccount:${google_service_account.runtime.email}"
 }
 
+resource "google_project_iam_member" "runtime_bigquery_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.runtime.email}"
+}
+
 resource "google_project_iam_member" "runtime_bigquery_read" {
   project = var.project_id
   role    = "roles/bigquery.dataViewer"
@@ -112,6 +118,27 @@ module "secrets" {
   depends_on = [module.apis]
 }
 
+module "frontend_gcs" {
+  source      = "../../modules/gcs"
+  project_id  = var.project_id
+  bucket_name = "${var.project_id}-mt-oil-dashboard"
+  location    = var.gcs_location
+  versioning  = false
+  labels      = local.labels
+  website = {
+    main_page_suffix = "index.html"
+    not_found_page   = "index.html"
+  }
+
+  depends_on = [module.apis]
+}
+
+resource "google_storage_bucket_iam_member" "frontend_public" {
+  bucket = module.frontend_gcs.bucket_name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
 module "cloud_run" {
   source     = "../../modules/cloud_run"
   project_id = var.project_id
@@ -133,7 +160,7 @@ module "cloud_run" {
     GCP_PROJECT_ID    = var.project_id
     GCS_DATA_BUCKET   = module.gcs.bucket_name
     BIGQUERY_DATASET  = module.bigquery.dataset_id
-    FRONTEND_URL      = "https://${module.firebase_hosting.site_id}.web.app"
+    FRONTEND_URL      = "https://storage.googleapis.com/${module.frontend_gcs.bucket_name}"
     MODEL_PATH        = "gs://${module.gcs.bucket_name}/models/rf_model.joblib"
     ENABLE_LOCAL_DATA = "false"
     LOG_LEVEL         = "info"
@@ -141,16 +168,7 @@ module "cloud_run" {
 
   labels = local.labels
 
-  depends_on = [module.gcs, module.bigquery, module.firebase_hosting]
-}
-
-module "firebase_hosting" {
-  source     = "../../modules/firebase_hosting"
-  project_id = var.project_id
-  site_id    = "mt-oil-dashboard"
-  app_name   = "MT Oil Dashboard (${local.env})"
-
-  depends_on = [module.apis]
+  depends_on = [module.gcs, module.bigquery, module.frontend_gcs]
 }
 
 module "fracfocus_job" {

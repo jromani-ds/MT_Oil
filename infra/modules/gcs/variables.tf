@@ -43,3 +43,12 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "website" {
+  description = "Optional static website configuration"
+  type = object({
+    main_page_suffix = string
+    not_found_page   = string
+  })
+  default = null
+}

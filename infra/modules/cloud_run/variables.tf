@@ -89,6 +89,12 @@ variable "allow_unauthenticated" {
   default     = true
 }
 
+variable "deletion_protection" {
+  description = "Whether Terraform should protect the service from deletion"
+  type        = bool
+  default     = true
+}
+
 variable "labels" {
   description = "Service labels"
   type        = map(string)
