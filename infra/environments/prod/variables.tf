@@ -33,3 +33,15 @@ variable "api_image" {
   type        = string
   default     = "us-central1-docker.pkg.dev/my-project-1508887546225/mt-oil-api/mt-oil-api:latest"
 }
+
+variable "alert_email" {
+  description = "Email address for monitoring alerts (empty = console-only)"
+  type        = string
+  default     = ""
+}
+
+variable "billing_account" {
+  description = "GCP billing account ID for budget alerts (empty = no budget)"
+  type        = string
+  default     = ""
+}

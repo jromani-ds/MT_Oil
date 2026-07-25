@@ -210,3 +210,20 @@ module "fracfocus_scheduler" {
 
   depends_on = [module.fracfocus_job]
 }
+
+module "monitoring" {
+  source     = "../../modules/monitoring"
+  project_id = var.project_id
+  env        = local.env
+
+  api_url                = module.cloud_run.service_url
+  frontend_url           = "https://storage.googleapis.com/${module.frontend_gcs.bucket_name}"
+  cloud_run_service_name = module.cloud_run.service_name
+
+  alert_email     = var.alert_email
+  billing_account = var.billing_account
+  budget_amount   = 10
+  labels          = local.labels
+
+  depends_on = [module.apis, module.cloud_run, module.frontend_gcs]
+}
