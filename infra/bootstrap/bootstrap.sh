@@ -36,6 +36,8 @@ gcloud services enable \
   iamcredentials.googleapis.com \
   monitoring.googleapis.com \
   logging.googleapis.com \
+  billingbudgets.googleapis.com \
+  appengine.googleapis.com \
   firebase.googleapis.com \
   firestore.googleapis.com \
   --project="${PROJECT_ID}"
