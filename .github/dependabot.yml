@@ -6,7 +6,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
     reviewers:
-      - "attackgnome"
+      - "jromani-ds"
     labels:
       - "dependencies"
       - "python"
@@ -17,7 +17,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
     reviewers:
-      - "attackgnome"
+      - "jromani-ds"
     labels:
       - "dependencies"
       - "javascript"
@@ -28,7 +28,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 3
     reviewers:
-      - "attackgnome"
+      - "jromani-ds"
     labels:
       - "dependencies"
       - "terraform"

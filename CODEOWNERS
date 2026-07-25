@@ -1,13 +1,13 @@
 # Require owner review for infrastructure and CI/CD changes
-infra/                         @attackgnome
-.github/                       @attackgnome
-Dockerfile                     @attackgnome
-.pre-commit-config.yaml        @attackgnome
-SECURITY.md                    @attackgnome
-AGENTS.md                      @attackgnome
+infra/                         @jromani-ds
+.github/                       @jromani-ds
+Dockerfile                     @jromani-ds
+.pre-commit-config.yaml        @jromani-ds
+SECURITY.md                    @jromani-ds
+AGENTS.md                      @jromani-ds
 
 # Backend domain logic
-src/mt_oil/                    @attackgnome
+src/mt_oil/                    @jromani-ds
 
 # Frontend
-frontend/                      @attackgnome
+frontend/                      @jromani-ds
