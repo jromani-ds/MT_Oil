@@ -5,7 +5,19 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
       - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: ["--branch=main", "--branch=dev"]
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        additional_dependencies: ["pyahocorasick"]
 
   - repo: https://github.com/psf/black
     rev: 24.1.1
@@ -16,4 +28,40 @@ repos:
     rev: v0.1.14
     hooks:
       - id: ruff
-        args: [ --fix ]
+        args: ["--fix"]
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [yaml, json, markdown, toml]
+        additional_dependencies:
+          - prettier@3.2.4
+          - prettier-plugin-toml@2.0.1
+
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.86.0
+    hooks:
+      - id: terraform_fmt
+        args: ["--args=-write=true"]
+      - id: terraform_validate
+        args: ["--hook-config=--retry-once-with-cleanup=true"]
+
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: eslint (frontend)
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        types_or: [ts, tsx, javascript, jsx]
+        pass_filenames: false
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+
+  - repo: local
+    hooks:
+      - id: pyproject-check
+        name: pyproject.toml syntax check
+        entry: python -c "import tomllib, pathlib; tomllib.loads(pathlib.Path('pyproject.toml').read_text())"
+        language: system
+        files: ^pyproject\.toml$
+        pass_filenames: false
