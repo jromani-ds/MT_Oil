@@ -40,7 +40,7 @@ Full-stack Oil & Gas analytics application built as a public portfolio / showcas
 ## Repository Rules
 
 1. **Never commit secrets, keys, or credentials.** All runtime secrets are resolved from Google Secret Manager / GitHub encrypted variables; authentication in CI uses Workload Identity Federation.
-2. **Branch workflow**: always cut a feature branch from `dev`, open PR to `dev`, then PR `dev` → `main`. Direct pushes to `dev` and `main` are blocked by branch protection.
+2. **Branch workflow**: always cut a feature branch from `dev`, open PR to `dev`, then PR `dev` → `master`. Direct pushes to `dev` and `master` are blocked by branch protection.
 3. **Pre-commit hooks must pass**: `pre-commit run --all-files` before any PR.
 4. **Tests must pass**: `pytest tests/` for backend; `npm run lint && npm run build` for frontend.
 5. **Terraform**: never apply locally to shared environments; use CI/CD or review `terraform plan` carefully.
@@ -95,7 +95,7 @@ This is a personal demo with a strict ~$10/month budget. Key limits:
 
 ## Deployment Environments
 
-| Environment | Branch | Cloud Run Service | BigQuery Dataset | GCS Static Site Bucket |
-| ----------- | ------ | ----------------- | ---------------- | ---------------------- |
-| Dev         | `dev`  | `mt-oil-api-dev`  | `mt_oil_dev`     | `mt-oil-dashboard-dev` |
-| Prod        | `main` | `mt-oil-api-prod` | `mt_oil_prod`    | `mt-oil-dashboard`     |
+| Environment | Branch   | Cloud Run Service | BigQuery Dataset | GCS Static Site Bucket |
+| ----------- | -------- | ----------------- | ---------------- | ---------------------- |
+| Dev         | `dev`    | `mt-oil-api-dev`  | `mt_oil_dev`     | `mt-oil-dashboard-dev` |
+| Prod        | `master` | `mt-oil-api-prod` | `mt_oil_prod`    | `mt-oil-dashboard`     |
