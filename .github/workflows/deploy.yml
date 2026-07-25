@@ -31,6 +31,7 @@ jobs:
     environment: ${{ inputs.environment }}
     permissions:
       contents: read
+      deployments: write
       id-token: write
     steps:
       - name: Checkout
