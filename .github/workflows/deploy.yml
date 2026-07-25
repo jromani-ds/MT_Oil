@@ -43,6 +43,7 @@ jobs:
         with:
           workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.GCP_SERVICE_ACCOUNT_EMAIL }}
+          audience: https://github.com/${{ github.repository }}
           token_format: access_token
           access_token_lifetime: 1800s
 
