@@ -7,6 +7,7 @@ resource "google_cloud_run_v2_job" "this" {
   template {
     template {
       service_account = var.service_account_email
+      timeout         = "${var.timeout_seconds}s"
 
       containers {
         image = var.image

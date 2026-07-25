@@ -1,3 +1,13 @@
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
+# Cloud Scheduler requires an App Engine application in the chosen region.
+resource "google_app_engine_application" "this" {
+  project     = var.project_id
+  location_id = var.app_engine_location
+}
+
 resource "google_cloud_scheduler_job" "this" {
   name             = var.job_name
   project          = var.project_id
@@ -14,4 +24,22 @@ resource "google_cloud_scheduler_job" "this" {
       service_account_email = var.service_account_email
     }
   }
+
+  depends_on = [google_app_engine_application.this]
+}
+
+# Allow the runtime service account to invoke the target Cloud Run Job.
+resource "google_cloud_run_v2_job_iam_member" "invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = var.cloud_run_job_name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.service_account_email}"
+}
+
+# Allow the Cloud Scheduler service agent to impersonate the runtime SA.
+resource "google_service_account_iam_member" "scheduler_token_creator" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${var.service_account_email}"
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
 }

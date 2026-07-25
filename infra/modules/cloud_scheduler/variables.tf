@@ -34,3 +34,9 @@ variable "service_account_email" {
   description = "Service account email to run the scheduler job"
   type        = string
 }
+
+variable "app_engine_location" {
+  description = "App Engine location for Cloud Scheduler (must match scheduler region, e.g. us-central for us-central1)"
+  type        = string
+  default     = "us-central"
+}

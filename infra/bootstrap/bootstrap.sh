@@ -76,13 +76,17 @@ ROLES=(
   roles/run.admin
   roles/artifactregistry.writer
   roles/storage.admin
-  roles/bigquery.dataEditor
-  roles/bigquery.dataViewer
+  roles/bigquery.admin
   roles/secretmanager.secretAccessor
+  roles/iam.serviceAccountAdmin
   roles/iam.serviceAccountUser
   roles/iam.workloadIdentityUser
   roles/logging.logWriter
-  roles/monitoring.metricWriter
+  roles/monitoring.editor
+  roles/cloudscheduler.admin
+  roles/appengine.appAdmin
+  roles/serviceusage.serviceUsageAdmin
+  roles/billing.costsManager
 )
 
 for ROLE in "${ROLES[@]}"; do

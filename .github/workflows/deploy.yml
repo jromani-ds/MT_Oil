@@ -117,4 +117,4 @@ jobs:
       - name: Show deployed URLs
         run: |
           echo "API: ${{ steps.api.outputs.url }}"
-          echo "Frontend: https://storage.googleapis.com/${{ inputs.frontend_bucket }}"
+          echo "Frontend: https://${{ inputs.frontend_bucket }}.storage.googleapis.com/"

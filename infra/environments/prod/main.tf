@@ -160,7 +160,8 @@ module "cloud_run" {
     GCP_PROJECT_ID    = var.project_id
     GCS_DATA_BUCKET   = module.gcs.bucket_name
     BIGQUERY_DATASET  = module.bigquery.dataset_id
-    FRONTEND_URL      = "https://storage.googleapis.com/${module.frontend_gcs.bucket_name}"
+    FRONTEND_URL      = module.frontend_gcs.website_url
+    CORS_ORIGINS      = module.frontend_gcs.website_url
     MODEL_PATH        = "gs://${module.gcs.bucket_name}/models/rf_model.joblib"
     ENABLE_LOCAL_DATA = "false"
     LOG_LEVEL         = "info"
@@ -217,7 +218,7 @@ module "monitoring" {
   env        = local.env
 
   api_url                = module.cloud_run.service_url
-  frontend_url           = "https://storage.googleapis.com/${module.frontend_gcs.bucket_name}"
+  frontend_url           = module.frontend_gcs.website_url
   cloud_run_service_name = module.cloud_run.service_name
 
   alert_email     = var.alert_email
