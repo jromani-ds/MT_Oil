@@ -8,7 +8,7 @@ resource "google_cloud_run_v2_service" "this" {
   template {
     service_account = var.service_account_email
     scaling {
-      min_instance_count = var.min_scale > 0 ? var.min_scale : null
+      min_instance_count = var.min_scale
       max_instance_count = var.max_scale
     }
 
@@ -61,6 +61,10 @@ resource "google_cloud_run_v2_service" "this" {
   }
 
   labels = var.labels
+
+  lifecycle {
+    ignore_changes = [template[0].scaling]
+  }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "public" {
