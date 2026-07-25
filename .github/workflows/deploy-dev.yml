@@ -1,0 +1,18 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: dev
+      api_service_name: mt-oil-api-dev
+      tf_dir: infra/environments/dev
+      frontend_bucket: my-project-1508887546225-mt-oil-dashboard-dev

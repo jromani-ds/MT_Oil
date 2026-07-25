@@ -35,3 +35,48 @@ Thumbs.db # Windows specific
 *.log
 *.tmp
 *.temp
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+service-account*.json
+gcp-*.json
+credentials.json
+google-application-credentials.json
+
+# Terraform / IaC
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform.lock.hcl
+crash.log
+override.tf
+*_override.tf
+.terraformrc
+terraform.rc
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Frontend build artifacts (tracked by CI, not source)
+frontend/dist/
+frontend/dist-ssr/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Model artifacts generated at runtime
+*.joblib
+*.pkl
+*.h5
+
+# macOS
+.DS_Store

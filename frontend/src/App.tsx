@@ -1,9 +1,14 @@
 import './App.css'
 import { Dashboard } from './Dashboard'
 
+import { Toaster } from 'sonner'
+
 function App() {
   return (
-    <Dashboard />
+    <>
+      <Dashboard />
+      <Toaster position="top-right" richColors />
+    </>
   )
 }
 

@@ -1,0 +1,13 @@
+# Require owner review for infrastructure and CI/CD changes
+infra/                         @jromani-ds
+.github/                       @jromani-ds
+Dockerfile                     @jromani-ds
+.pre-commit-config.yaml        @jromani-ds
+SECURITY.md                    @jromani-ds
+AGENTS.md                      @jromani-ds
+
+# Backend domain logic
+src/mt_oil/                    @jromani-ds
+
+# Frontend
+frontend/                      @jromani-ds
