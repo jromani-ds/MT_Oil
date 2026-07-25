@@ -78,6 +78,16 @@ terraform apply
 - The backend reads well/production data from **BigQuery**, not from local `.tab` files, in deployed environments.
 - Model artifact (`rf_model.joblib`) is loaded from **GCS**; do not commit it.
 
+## Infrastructure Conventions
+
+- **Project-agnostic IaC**: never hardcode GCP Project IDs, regions, zones, or account IDs in Terraform or GitHub Actions. Use variables, data sources, and WIF.
+- **Variables + examples**: define environment-specific inputs as variables in `variables.tf` and provide a `terraform.tfvars.example` for each environment.
+- **Dynamic naming**: derive globally unique resource names (GCS buckets, Artifact Registry repos) from `var.project_id` or a `random_id` suffix.
+- **Project metadata**: use `data "google_project"` rather than hardcoding project numbers.
+- **Backend flexibility**: keep Terraform backend blocks empty by default; configure remote state via `-backend-config`.
+- **Required APIs**: explicitly enable GCP APIs with `google_project_service` and `disable_on_destroy = false`.
+- **No service account JSON keys in CI**: use Workload Identity Federation and GitHub variables/secrets for any per-project values.
+
 ## Cost Guardrails
 
 This is a personal demo with a strict ~$10/month budget. Key limits:
