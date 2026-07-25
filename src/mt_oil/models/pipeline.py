@@ -1,10 +1,4 @@
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, r2_score
+import logging
 import os
 import tempfile
 from pathlib import Path
@@ -12,6 +6,15 @@ from typing import TYPE_CHECKING
 
 import joblib
 import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     pass
@@ -107,14 +110,14 @@ def train_and_evaluate(data: pd.DataFrame) -> Pipeline:
         "model__min_samples_split": [2, 5],
     }
 
-    print("Starting GridSearch CV...")
+    logger.info("Starting GridSearch CV...")
     grid_search = GridSearchCV(
         pipeline, param_grid, cv=5, scoring="neg_mean_absolute_error", n_jobs=-1
     )
 
     grid_search.fit(X_train, y_train)
 
-    print(f"Best Parameters: {grid_search.best_params_}")
+    logger.info("Best Parameters: %s", grid_search.best_params_)
 
     best_model = grid_search.best_estimator_
 
@@ -123,13 +126,13 @@ def train_and_evaluate(data: pd.DataFrame) -> Pipeline:
 
     # Evaluate the model
     mae = mean_absolute_error(y_test, y_pred)
-    print(f"Mean Absolute Error: {mae}")
+    logger.info("Mean Absolute Error: %f", mae)
 
     r2 = r2_score(y_test, y_pred)
-    print(f"R^2: {r2}")
+    logger.info("R^2: %f", r2)
 
     # Retrain on full dataset with best params
-    print("Retraining on full dataset...")
+    logger.info("Retraining on full dataset...")
     best_model.fit(X, y)
 
     return best_model
@@ -137,29 +140,36 @@ def train_and_evaluate(data: pd.DataFrame) -> Pipeline:
 
 def save_model(model: Pipeline, path: str = "rf_model.joblib"):
     if path.startswith("gs://"):
-        local_path = _maybe_download_gcs(path)
-        joblib.dump(model, local_path)
+        suffix = Path(path).suffix or ".joblib"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            joblib.dump(model, tmp.name)
+            local_path = tmp.name
 
-        from google.cloud import storage
+        try:
+            from google.cloud import storage
 
-        client = storage.Client()
-        bucket_name, blob_name = path[5:].split("/", 1)
-        bucket = client.bucket(bucket_name)
-        blob = bucket.blob(blob_name)
-        blob.upload_from_filename(local_path)
-        print(f"Model uploaded to {path}")
+            client = storage.Client()
+            bucket_name, blob_name = path[5:].split("/", 1)
+            bucket = client.bucket(bucket_name)
+            blob = bucket.blob(blob_name)
+            blob.upload_from_filename(local_path)
+            logger.info("Model uploaded to %s", path)
+        finally:
+            if os.path.exists(local_path):
+                os.remove(local_path)
     else:
         joblib.dump(model, path)
-        print(f"Model saved to {path}")
+        logger.info("Model saved to %s", path)
 
 
 def load_model(path: str = "rf_model.joblib") -> Pipeline:
     local_path = _maybe_download_gcs(path)
-    if os.path.exists(local_path):
-        try:
-            return joblib.load(local_path)
-        finally:
-            # Clean up temp file if we downloaded from GCS.
-            if local_path != path and os.path.exists(local_path):
-                os.remove(local_path)
-    return None
+    if not os.path.exists(local_path):
+        logger.warning("Model file not found: %s", path)
+        return None
+    try:
+        return joblib.load(local_path)
+    finally:
+        # Clean up temp file if we downloaded from GCS.
+        if local_path != path and os.path.exists(local_path):
+            os.remove(local_path)

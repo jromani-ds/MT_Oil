@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from contextlib import asynccontextmanager
 
-from mt_oil.config import settings
+from mt_oil.config import settings, logger
 from mt_oil.data.loader import pull_well_data, pull_prod_data, pull_ff_data
 from mt_oil.data.bigquery_loader import load_all_from_bigquery
 from mt_oil.processing.features import (
@@ -37,7 +37,7 @@ db = DataStore()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.skip_data_load:
-        print("[SKIP_DATA_LOAD] Skipping data load for tests.")
+        logger.info("[SKIP_DATA_LOAD] Skipping data load for tests.")
         yield
         return
 
@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
         and settings.bigquery_dataset
     )
 
-    print(f"[{settings.environment}] Loading data... (BigQuery={use_bq})")
+    logger.info("[%s] Loading data... (BigQuery=%s)", settings.environment, use_bq)
     try:
         if use_bq:
             raw_well, raw_prod, db.ff_df = load_all_from_bigquery(
@@ -78,28 +78,30 @@ async def lifespan(app: FastAPI):
 
         # FracFocus is optional (small feature set); failures should not break the app.
         if db.ff_df is None:
-            print("FracFocus data not available; ML features will be unavailable.")
+            logger.warning(
+                "FracFocus data not available; ML features will be unavailable."
+            )
 
         # Merge for ML features
         if db.ff_df is not None and not db.ff_df.empty:
             try:
-                print("Merging datasets for ML features...")
+                logger.info("Merging datasets for ML features...")
                 db.ff_df.index = db.ff_df.index.astype(str)
                 db.merged_df = merge_data(
                     db.totals_df, db.well_df, db.ff_df, interval=720
                 )
-                print(f"{len(db.merged_df)} wells with full ML features.")
+                logger.info("%s wells with full ML features.", len(db.merged_df))
             except Exception as e:
-                print(f"ML feature merge failed: {e}")
+                logger.warning("ML feature merge failed: %s", e)
                 db.merged_df = None
 
         # Load ML model from local path or GCS
-        print(f"Loading ML Model from {settings.model_path}...")
+        logger.info("Loading ML Model from %s...", settings.model_path)
         db.ml_model = load_model(settings.model_path)
         if db.ml_model:
-            print("ML Model loaded successfully.")
+            logger.info("ML Model loaded successfully.")
         else:
-            print("No trained ML model found. Use /train endpoint to train.")
+            logger.warning("No trained ML model found. Use /train endpoint to train.")
 
         # Derive primary formation from production data
         prod_reset = db.prod_df.reset_index()
@@ -111,12 +113,13 @@ async def lifespan(app: FastAPI):
         db.well_df = db.well_df.join(unique_fmtn)
         db.well_df["ST_FMTN_CD"] = db.well_df["ST_FMTN_CD"].fillna("Unknown")
 
-        print(
-            f"Data Loaded: {len(db.well_df)} wells. "
-            f"{len(db.producing_wells_set)} producing wells."
+        logger.info(
+            "Data Loaded: %s wells. %s producing wells.",
+            len(db.well_df),
+            len(db.producing_wells_set),
         )
     except Exception as e:
-        print(f"Error loading data: {e}")
+        logger.error("Error loading data: %s", e)
         raise
 
     yield
@@ -142,8 +145,15 @@ app.add_middleware(
 
 @app.get("/health")
 def health_check():
+    use_bq = (
+        not settings.enable_local_data
+        and bool(settings.gcp_project_id)
+        and bool(settings.bigquery_dataset)
+    )
     return {
         "status": "ok",
+        "environment": settings.environment,
+        "bigquery_enabled": use_bq,
         "wells_loaded": len(db.well_df) if db.well_df is not None else 0,
         "producing_wells": len(db.producing_wells_set) if db.producing_wells_set else 0,
         "ml_model_loaded": db.ml_model is not None,
@@ -239,14 +249,14 @@ async def train_model(background_tasks: BackgroundTasks):
         raise HTTPException(status_code=400, detail="No sufficient data for training")
 
     def run_training():
-        print("Starting background training...")
+        logger.info("Starting background training...")
         try:
             model = train_and_evaluate(db.merged_df)
-            save_model(model)
+            save_model(model, settings.model_path)
             db.ml_model = model
-            print("Training complete and model loaded.")
+            logger.info("Training complete and model loaded.")
         except Exception as e:
-            print(f"Training failed: {e}")
+            logger.error("Training failed: %s", e)
         finally:
             db.is_training = False
 
@@ -296,7 +306,7 @@ def fit_decline_curve(
                 # Let's just include "ml_predicted_eur" in the response so the frontend can compare.
                 pass
             except Exception as e:
-                print(f"ML Prediction failed: {e}")
+                logger.warning("ML Prediction failed: %s", e)
 
     # Generate forecast
     FORECAST_MONTHS = 24
