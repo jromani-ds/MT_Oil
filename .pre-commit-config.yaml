@@ -58,3 +58,11 @@ repos:
         types_or: [ts, tsx, javascript, jsx]
         pass_filenames: false
         files: ^frontend/.*\.(ts|tsx|js|jsx)$
+
+      - id: pytest-backend
+        name: pytest (backend)
+        entry: pytest tests/ -q
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
