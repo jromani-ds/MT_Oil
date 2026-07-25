@@ -1,17 +1,22 @@
-from fastapi import FastAPI, HTTPException, Query, Path
+from fastapi import FastAPI, HTTPException, Query, Path, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import pandas as pd
 import numpy as np
 from contextlib import asynccontextmanager
 
-from mt_oil.data.loader import pull_well_data, pull_prod_data
+from mt_oil.config import settings
+from mt_oil.data.loader import pull_well_data, pull_prod_data, pull_ff_data
+from mt_oil.data.bigquery_loader import load_all_from_bigquery
 from mt_oil.processing.features import (
     preprocess_well_data,
     preprocess_prod_data,
+    preprocess_ff_data,
+    merge_data,
 )
 from mt_oil.domain.decline_curve import fit_best_decline, arps_decline, duong_decline
 from mt_oil.domain.economics import calculate_npv
+from mt_oil.models.pipeline import train_and_evaluate, load_model, save_model
 
 
 # Global Data Cache
@@ -19,7 +24,11 @@ class DataStore:
     well_df: Optional[pd.DataFrame] = None
     prod_df: Optional[pd.DataFrame] = None
     totals_df: Optional[pd.DataFrame] = None
+    ff_df: Optional[pd.DataFrame] = None
+    merged_df: Optional[pd.DataFrame] = None  # Features for ML
     producing_wells_set: Optional[set] = None
+    ml_model: Optional[object] = None  # Pipeline object
+    is_training: bool = False
 
 
 db = DataStore()
@@ -27,75 +36,105 @@ db = DataStore()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load data on startup
-    print("Loading data...")
-    # Using existing loader functions.
-    # Note: These download if not present.
+    if settings.skip_data_load:
+        print("[SKIP_DATA_LOAD] Skipping data load for tests.")
+        yield
+        return
+
+    use_bq = (
+        not settings.enable_local_data
+        and settings.gcp_project_id
+        and settings.bigquery_dataset
+    )
+
+    print(f"[{settings.environment}] Loading data... (BigQuery={use_bq})")
     try:
-        raw_well = pull_well_data()
+        if use_bq:
+            raw_well, raw_prod, db.ff_df = load_all_from_bigquery(
+                settings.gcp_project_id, settings.bigquery_dataset
+            )
+        else:
+            raw_well = pull_well_data()
+            _, raw_prod = pull_prod_data()
+            raw_ff, _ = pull_ff_data()
+            raw_ff["APINumber"] = raw_ff["APINumber"].astype(str)
+            db.ff_df = preprocess_ff_data(raw_ff)
+
+        # Well headers (used by map/filters/details)
         db.well_df = preprocess_well_data(raw_well)
-        # Ensure Index is string for API lookups
         db.well_df.index = db.well_df.index.astype(str)
 
-        lease_prod, well_prod = pull_prod_data()
-
-        # 1. Preprocess totals FIRST (needs API_WellNo as column)
-        # Ensure API is string here too just in case, or let preprocess handle it?
-        # preprocess_prod_data expects API_WellNo column.
-        # Let's operate on a copy or just do it before mutation.
-        well_prod["API_WellNo"] = well_prod["API_WellNo"].astype(str)
-        db.totals_df = preprocess_prod_data(well_prod)
+        # Production history (used by production/DCA/economics endpoints)
+        raw_prod["API_WellNo"] = raw_prod["API_WellNo"].astype(str)
+        db.totals_df = preprocess_prod_data(raw_prod)
         db.totals_df.index = db.totals_df.index.astype(str)
 
-        # 2. Setup raw prod_df for API access
-        db.prod_df = well_prod
-        # Index for speed
-        db.prod_df.set_index("API_WellNo", inplace=True)
-        # Sort index to ensure performance
-        db.prod_df.sort_index(inplace=True)
+        db.prod_df = raw_prod.set_index("API_WellNo").sort_index()
 
-        # 3. Calculate "Producing" wells (Cumulative Oil > 0 OR Gas > 0)
-        print("Calculating production stats...")
+        # Producing wells set for "has_production" filter
         sums = db.prod_df.groupby(level=0)[["BBLS_OIL_COND", "MCF_GAS"]].sum()
-        # Filter: At least 1 bbl of oil or 1 mcf of gas total
         producing = sums[(sums["BBLS_OIL_COND"] > 0) | (sums["MCF_GAS"] > 0)]
         db.producing_wells_set = set(producing.index)
-        print(f"Identified {len(db.producing_wells_set)} producing wells.")
 
-        # 4. Derive Primary Formation for each well
-        # Get the formation with the most records or just first one per well
-        # Reset index to get API as column
+        # FracFocus is optional (small feature set); failures should not break the app.
+        if db.ff_df is None:
+            print("FracFocus data not available; ML features will be unavailable.")
+
+        # Merge for ML features
+        if db.ff_df is not None and not db.ff_df.empty:
+            try:
+                print("Merging datasets for ML features...")
+                db.ff_df.index = db.ff_df.index.astype(str)
+                db.merged_df = merge_data(
+                    db.totals_df, db.well_df, db.ff_df, interval=720
+                )
+                print(f"{len(db.merged_df)} wells with full ML features.")
+            except Exception as e:
+                print(f"ML feature merge failed: {e}")
+                db.merged_df = None
+
+        # Load ML model from local path or GCS
+        print(f"Loading ML Model from {settings.model_path}...")
+        db.ml_model = load_model(settings.model_path)
+        if db.ml_model:
+            print("ML Model loaded successfully.")
+        else:
+            print("No trained ML model found. Use /train endpoint to train.")
+
+        # Derive primary formation from production data
         prod_reset = db.prod_df.reset_index()
-        # Group by API and take the mode (most common) or first of ST_FMTN_CD
-        # For simplicity/speed, let's take the first one found.
-        # A more robust way: value_counts().index[0] per group, but expensive.
-        # Let's drop duplicates on API keeping first.
-        unique_fmtn = prod_reset[["API_WellNo", "ST_FMTN_CD"]].drop_duplicates(
-            "API_WellNo"
+        unique_fmtn = (
+            prod_reset[["API_WellNo", "ST_FMTN_CD"]]
+            .drop_duplicates("API_WellNo")
+            .set_index("API_WellNo")
         )
-        unique_fmtn.set_index("API_WellNo", inplace=True)
-
-        # Merge Formation into well_df
-        # We use left join to keep all wells, fill na with 'Unknown'
         db.well_df = db.well_df.join(unique_fmtn)
         db.well_df["ST_FMTN_CD"] = db.well_df["ST_FMTN_CD"].fillna("Unknown")
 
-        print(f"Data Loaded: {len(db.well_df)} wells.")
+        print(
+            f"Data Loaded: {len(db.well_df)} wells. "
+            f"{len(db.producing_wells_set)} producing wells."
+        )
     except Exception as e:
         print(f"Error loading data: {e}")
+        raise
 
     yield
-    # Cleanup if needed
+
     db.well_df = None
+    db.prod_df = None
+    db.totals_df = None
+    db.ff_df = None
+    db.merged_df = None
+    db.ml_model = None
 
 
 app = FastAPI(title="MT Oil API", lifespan=lifespan)
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=settings.cors_origins,
+    allow_credentials=("*" not in settings.cors_origins),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -106,9 +145,8 @@ def health_check():
     return {
         "status": "ok",
         "wells_loaded": len(db.well_df) if db.well_df is not None else 0,
-        "producing_wells": (
-            len(db.producing_wells_set) if db.producing_wells_set is not None else 0
-        ),
+        "producing_wells": len(db.producing_wells_set) if db.producing_wells_set else 0,
+        "ml_model_loaded": db.ml_model is not None,
     }
 
 
@@ -136,23 +174,17 @@ def get_wells(
     if db.well_df is None:
         raise HTTPException(status_code=503, detail="Data not loaded")
 
-    # Start with all wells
-    # Reset index to make API_WellNo a column
     df = db.well_df.reset_index()
 
     if has_production:
         if db.producing_wells_set is None:
             raise HTTPException(status_code=503, detail="Production data not loaded")
-        # Filter to only wells with ACTUAL production (>0)
         df = df[df["API_WellNo"].isin(db.producing_wells_set)]
 
-    # Apply Filters
     if formation:
         df = df[df["ST_FMTN_CD"] == formation]
-
     if well_type:
         df = df[df["Type"] == well_type]
-
     if slant:
         df = df[df["Slant"] == slant]
 
@@ -178,17 +210,6 @@ def get_well_production(api_number: str):
     if db.prod_df is None:
         raise HTTPException(status_code=503, detail="Data not loaded")
 
-    # Filter raw prod data
-    # Ensure type match (API in prod data might be int or str, loader usually parses consistent)
-    # Check type in dataframe first if needed, assuming str for now based on previous code
-
-    # In pull_data.py it was read_csv without specific dtype for API, so likely inferred as int or obj.
-    # We should handle this more robustly in a real app (casting).
-    pass
-    # Logic to fetch and return timeseries
-
-    # Using the raw dataframe
-    # Types are now enforced as strings on load, and index is set
     if api_number in db.prod_df.index:
         well_data = db.prod_df.loc[[api_number]]
     else:
@@ -197,47 +218,87 @@ def get_well_production(api_number: str):
     if well_data.empty:
         return []
 
-    # Standardize columns
     result = well_data[
         ["Rpt_Date", "BBLS_OIL_COND", "MCF_GAS", "BBLS_WTR", "DAYS_PROD"]
     ].fillna(0)
-    # Sort by date
     result["Rpt_Date"] = pd.to_datetime(result["Rpt_Date"])
     result = result.sort_values("Rpt_Date")
 
     return result.to_dict(orient="records")
 
 
+@app.post("/train")
+async def train_model(background_tasks: BackgroundTasks):
+    """
+    Triggers model training in the background. Enforces single-concurrency.
+    """
+    if db.is_training:
+        raise HTTPException(status_code=409, detail="Training already in progress")
+
+    if db.merged_df is None or db.merged_df.empty:
+        raise HTTPException(status_code=400, detail="No sufficient data for training")
+
+    def run_training():
+        print("Starting background training...")
+        try:
+            model = train_and_evaluate(db.merged_df)
+            save_model(model)
+            db.ml_model = model
+            print("Training complete and model loaded.")
+        except Exception as e:
+            print(f"Training failed: {e}")
+        finally:
+            db.is_training = False
+
+    db.is_training = True
+    background_tasks.add_task(run_training)
+    return {"status": "Training started in background"}
+
+
 @app.post("/wells/{api_number}/decline")
 def fit_decline_curve(
     api_number: str, method: str = Query("auto", enum=["auto", "arps", "duong"])
 ):
-    """
-    Fits a decline curve to the well's oil production history.
-    """
     prod_hist = get_well_production(api_number)
     if not prod_hist:
         raise HTTPException(status_code=404, detail="No production history found")
 
     df = pd.DataFrame(prod_hist)
-    # Filter for oil > 0
     df = df[df["BBLS_OIL_COND"] > 0].reset_index(drop=True)
 
-    if len(df) < 6:  # Need minimum data points
+    if len(df) < 6:
         raise HTTPException(
             status_code=400, detail="Insufficient data for decline curve analysis"
         )
 
-    # Time in months (approx)
-    # Calculate months from start
     df["Month_Index"] = (df["Rpt_Date"] - df["Rpt_Date"].min()).dt.days // 30 + 1
-
     t_months = df["Month_Index"].values
     q_oil = df["BBLS_OIL_COND"].values
 
     best_fit = fit_best_decline(t_months, q_oil, method=method)
 
-    # Generate forecast (next 24 months / 2 years default)
+    # ML Constrained Logic (Fine-Tuning)
+    predicted_boe_eur = None
+    if db.ml_model and api_number in db.merged_df.index:
+        # Check if history is short (<12 months)
+        if len(df) <= 12:
+            try:
+                # Get features for this well
+                X_well = db.merged_df.loc[[api_number]].drop("BOE", axis=1)
+                predicted_boe_eur = db.ml_model.predict(X_well)[0]
+
+                # If predicted EUR is significantly different from fit, assume fit is bad due to short history
+                # This is a simple heuristic: if fit shows infinite growth or huge EUR, clamp it?
+                # For now, we will just return the ML EUR as extra info to the frontend
+                # or simpler: "Fine-tune" by logging it.
+                # Improving accuracy strategy:
+                # If Arps b > 1.5, clamp to 1.5? Or if forecasted EUR > 2x ML EUR, warn?
+                # Let's just include "ml_predicted_eur" in the response so the frontend can compare.
+                pass
+            except Exception as e:
+                print(f"ML Prediction failed: {e}")
+
+    # Generate forecast
     FORECAST_MONTHS = 24
     last_t = t_months[-1]
     forecast_t = np.arange(last_t + 1, last_t + FORECAST_MONTHS + 1)
@@ -249,7 +310,6 @@ def fit_decline_curve(
     else:
         forecast_q = []
 
-    # Helper to convert numpy types to native python types for JSON serialization
     def to_native(obj):
         if isinstance(obj, (np.integer, np.int64)):
             return int(obj)
@@ -263,50 +323,71 @@ def fit_decline_curve(
             return [to_native(i) for i in obj]
         return obj
 
-    return {
+    metrics = {
         "historical_data_points": int(len(df)),
-        "fit": to_native(best_fit),  # Sanitize best_fit dict (params, score)
+        "fit": to_native(best_fit),
         "forecast": {"months": forecast_t.tolist(), "production": forecast_q.tolist()},
     }
+
+    if predicted_boe_eur:
+        metrics["ml_predicted_eur_24mo"] = float(
+            predicted_boe_eur
+        )  # Note: ML target was 720 days (24mo) BOE
+
+    return metrics
 
 
 @app.post("/wells/{api_number}/economics")
 def run_economics(
     api_number: str,
     oil_price: float = 70.0,
+    gas_price: float = 3.5,
     discount_rate: float = 0.10,
     capex: float = 6000000.0,
     opex: float = 10.0,
-    abandonment_rate_daily: float = 5.0,  # bbl/day
+    abandonment_rate_daily: float = 5.0,
 ):
-
-    # 1. Get Forecast (Auto-fit)
     fit_res = fit_decline_curve(api_number, method="auto")
     if not fit_res["forecast"]["production"]:
         raise HTTPException(status_code=400, detail="Could not forecast production")
 
-    forecast_prod = fit_res["forecast"]["production"]
-
-    # 2. Get Historical Production
+    forecast_oil_prod = fit_res["forecast"]["production"]
     prod_hist = get_well_production(api_number)
-    # Convert list of dicts to list of floats (ordered by date)
-    # production is already sorted by date in get_well_production
-    historical_prod = [
+
+    # Extract historical oil and gas production
+    historical_oil_prod = [
         r["BBLS_OIL_COND"] for r in prod_hist if r["BBLS_OIL_COND"] is not None
     ]
+    historical_gas_prod = [r["MCF_GAS"] for r in prod_hist if r["MCF_GAS"] is not None]
 
-    # Convert daily abandonment to monthly (approx 30.4 days)
+    # For forecast, we only have oil forecast from DCA
+    # Assume gas-to-oil ratio from historical data for forecast
+    if historical_oil_prod and historical_gas_prod:
+        total_hist_oil = sum(historical_oil_prod)
+        total_hist_gas = sum(historical_gas_prod)
+        gor = total_hist_gas / total_hist_oil if total_hist_oil > 0 else 0
+    else:
+        gor = 0
+
+    forecast_gas_prod = [oil_vol * gor for oil_vol in forecast_oil_prod]
+
     abandonment_rate_monthly = abandonment_rate_daily * 30.4
 
-    # 3. Run Economics on Forecast + History
     econ_metrics = calculate_npv(
-        production_forecast=forecast_prod,
-        historical_production=historical_prod,
+        production_forecast_oil=forecast_oil_prod,
+        production_forecast_gas=forecast_gas_prod,
+        historical_production_oil=historical_oil_prod,
+        historical_production_gas=historical_gas_prod,
         oil_price=oil_price,
+        gas_price=gas_price,
         discount_rate=discount_rate,
         capex=capex,
         opex_per_bbl=opex,
         abandonment_rate=abandonment_rate_monthly,
     )
+
+    # Add ML comparison if available
+    if "ml_predicted_eur_24mo" in fit_res:
+        econ_metrics["ml_predicted_eur_24mo"] = fit_res["ml_predicted_eur_24mo"]
 
     return econ_metrics

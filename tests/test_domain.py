@@ -22,14 +22,16 @@ def test_decline_curve_fitting(method):
 
 def test_economics_npv():
     # Simple case: 1 month production
-    prod = [1000]
+    oil = [1000]
+    gas = [0]
     # Price $100, Net $80 (after tax/diff), Cost $10/bbl -> Margin $70
     # Cashflow = 1000 * 70 = 70,000
     # Capex 60,000
-    # NPV ~ 10,000 (undiscounted)
+    # NPV ~ 30,000 (undiscounted)
 
     res = calculate_npv(
-        production_forecast=prod,
+        production_forecast_oil=oil,
+        production_forecast_gas=gas,
         oil_price=100.0,
         oil_diff=0,
         capex=60_000,
@@ -46,7 +48,13 @@ def test_economics_npv():
 
 
 def test_economics_negative_case():
-    prod = [100]
-    res = calculate_npv(production_forecast=prod, oil_price=50.0, capex=1_000_000)
+    oil = [100]
+    gas = [0]
+    res = calculate_npv(
+        production_forecast_oil=oil,
+        production_forecast_gas=gas,
+        oil_price=50.0,
+        capex=1_000_000,
+    )
     assert res["NPV"] < 0
     assert res["Payout_Months"] == -1

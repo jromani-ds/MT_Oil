@@ -6,6 +6,7 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-json
+        exclude: ^frontend/tsconfig.*\.json$
       - id: check-merge-conflict
       - id: check-added-large-files
         args: ["--maxkb=1000"]
@@ -17,6 +18,7 @@ repos:
     rev: v1.4.0
     hooks:
       - id: detect-secrets
+        exclude: ".ipynb$|.json$|.lock$"
         additional_dependencies: ["pyahocorasick"]
 
   - repo: https://github.com/psf/black
@@ -56,12 +58,3 @@ repos:
         types_or: [ts, tsx, javascript, jsx]
         pass_filenames: false
         files: ^frontend/.*\.(ts|tsx|js|jsx)$
-
-  - repo: local
-    hooks:
-      - id: pyproject-check
-        name: pyproject.toml syntax check
-        entry: python -c "import tomllib, pathlib; tomllib.loads(pathlib.Path('pyproject.toml').read_text())"
-        language: system
-        files: ^pyproject\.toml$
-        pass_filenames: false

@@ -96,15 +96,17 @@ export const fitDecline = async (apiNumber: string): Promise<DeclineResponse> =>
 
 export const runEconomics = async (
     apiNumber: string,
-    oilPrice: number = 70.0,
-    capex: number = 6000000.0,
-    opex: number = 10.0,
-    discountRate: number = 0.10,
-    abandonmentRate: number = 5.0
+    oilPrice: number,
+    capex: number,
+    opex: number,
+    discountRate: number,
+    abandonmentRate: number,
+    gasPrice: number = 3.5
 ): Promise<EconomicMetrics> => {
     const response = await api.post<EconomicMetrics>(`/wells/${apiNumber}/economics`, null, {
         params: {
             oil_price: oilPrice,
+            gas_price: gasPrice,
             capex: capex,
             opex: opex,
             discount_rate: discountRate,
@@ -112,4 +114,4 @@ export const runEconomics = async (
         }
     });
     return response.data;
-}
+};
