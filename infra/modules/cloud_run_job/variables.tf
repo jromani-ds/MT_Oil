@@ -59,6 +59,18 @@ variable "secrets" {
   default     = {}
 }
 
+variable "command" {
+  description = "Override the container's default entrypoint"
+  type        = list(string)
+  default     = []
+}
+
+variable "args" {
+  description = "Arguments to the container's entrypoint"
+  type        = list(string)
+  default     = []
+}
+
 variable "labels" {
   description = "Job labels"
   type        = map(string)

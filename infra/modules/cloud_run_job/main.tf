@@ -12,6 +12,9 @@ resource "google_cloud_run_v2_job" "this" {
       containers {
         image = var.image
 
+        command = length(var.command) > 0 ? var.command : null
+        args    = length(var.args) > 0 ? var.args : null
+
         resources {
           limits = {
             cpu    = var.cpu
