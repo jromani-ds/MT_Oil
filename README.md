@@ -44,7 +44,7 @@ The frontend is served from `/index.html` on the GCS static website endpoint (th
 ### Prerequisites
 
 - Python 3.9+
-- Node.js 18+
+- Node.js 22+
 
 ### 1. Backend Setup
 
@@ -133,6 +133,8 @@ Cloud Scheduler is currently disabled due to a GCP App Engine provisioning issue
 gcloud run jobs execute mt-oil-fracfocus-dev --region=us-central1 --project=<GCP_PROJECT_ID>
 gcloud run jobs execute mt-oil-fracfocus-prod --region=us-central1 --project=<GCP_PROJECT_ID>
 ```
+
+Each run downloads the latest FracFocus registry, aggregates proppant/fluid totals by API, loads the result into BigQuery, and archives the raw ZIP to the project's GCS data bucket under `raw/fracfocus/`.
 
 ### Configuration
 

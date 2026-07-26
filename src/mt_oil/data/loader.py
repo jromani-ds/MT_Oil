@@ -2,6 +2,7 @@ import zipfile
 from urllib.request import urlopen
 import shutil
 import os
+import fnmatch
 import pandas as pd
 from typing import Tuple
 
@@ -83,12 +84,16 @@ def pull_well_data() -> pd.DataFrame:
             os.remove(file_name)
 
 
-def pull_ff_data(state_name: str = "Montana") -> Tuple[pd.DataFrame, pd.DataFrame]:
+def pull_ff_data(
+    state_name: str = "Montana", keep_zip: bool = False
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Retrieves FracFocus registry data for a single state.
 
     Args:
         state_name (str): Name of the state to filter data for. Defaults to "Montana".
+        keep_zip (bool): If True, leave the downloaded FracFocusCSV.zip on disk so
+            callers (e.g. the Cloud Run Job) can archive it to GCS. Defaults to False.
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
@@ -122,8 +127,7 @@ def pull_ff_data(state_name: str = "Montana") -> Tuple[pd.DataFrame, pd.DataFram
             registry_files = [
                 info
                 for info in zip_file.infolist()
-                if info.filename.endswith(".csv")
-                and "registryupload" not in info.filename.lower()
+                if fnmatch.fnmatch(info.filename, "FracFocusRegistry*.csv")
             ]
 
             if not registry_files:
@@ -153,5 +157,5 @@ def pull_ff_data(state_name: str = "Montana") -> Tuple[pd.DataFrame, pd.DataFram
         return registry_df, pd.DataFrame()
 
     finally:
-        if os.path.exists(file_name):
+        if not keep_zip and os.path.exists(file_name):
             os.remove(file_name)
