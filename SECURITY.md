@@ -13,7 +13,7 @@ If you discover a security issue in this repository or its deployed instances, p
 - **CI/CD authentication**: GitHub Actions authenticates to Google Cloud via Workload Identity Federation — no long-lived service-account keys are stored.
 - **Least privilege**: Cloud Run, Cloud Run Jobs, and CI/CD service accounts use the minimum IAM roles required.
 - **Dependencies**: Automated dependency updates are enabled via Dependabot; security advisories are monitored.
-- **In-scope assets**: The public repository, the Firebase-hosted frontend, the Cloud Run API, and the GCP project `my-project-1508887546225`.
+- **In-scope assets**: The public repository, the GCS static website frontend, the Cloud Run API, and the GCP project `<GCP_PROJECT_ID>`.
 
 ## What Not to Commit
 

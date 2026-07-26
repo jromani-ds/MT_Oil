@@ -1,7 +1,6 @@
 variable "project_id" {
   description = "GCP project ID"
   type        = string
-  default     = "my-project-1508887546225"
 }
 
 variable "region" {
@@ -31,7 +30,6 @@ variable "scheduler_region" {
 variable "api_image" {
   description = "Container image for the API and jobs"
   type        = string
-  default     = "us-central1-docker.pkg.dev/my-project-1508887546225/mt-oil-api/mt-oil-api:latest"
 }
 
 variable "alert_email" {

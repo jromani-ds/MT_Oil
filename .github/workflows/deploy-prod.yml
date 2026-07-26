@@ -17,4 +17,4 @@ jobs:
       environment: prod
       api_service_name: mt-oil-api-prod
       tf_dir: infra/environments/prod
-      frontend_bucket: my-project-1508887546225-mt-oil-dashboard
+      frontend_bucket: ${{ vars.GCP_PROJECT_ID }}-mt-oil-dashboard

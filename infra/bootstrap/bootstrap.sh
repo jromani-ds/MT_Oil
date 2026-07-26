@@ -5,10 +5,22 @@
 
 set -euo pipefail
 
-PROJECT_ID="${PROJECT_ID:-my-project-1508887546225}"
-REGION="${REGION:-us-central1}"
+PROJECT_ID="${PROJECT_ID:-}"
+REGION="${REGION:-}"
 REPO_OWNER="${REPO_OWNER:-jromani-ds}"
 REPO_NAME="${REPO_NAME:-MT_Oil}"
+
+if [[ -z "${PROJECT_ID}" ]]; then
+  echo "ERROR: PROJECT_ID environment variable is required."
+  echo "Usage: PROJECT_ID=<gcp-project-id> REGION=<gcp-region> ./infra/bootstrap/bootstrap.sh"
+  exit 1
+fi
+
+if [[ -z "${REGION}" ]]; then
+  echo "ERROR: REGION environment variable is required."
+  echo "Usage: PROJECT_ID=<gcp-project-id> REGION=<gcp-region> ./infra/bootstrap/bootstrap.sh"
+  exit 1
+fi
 STATE_BUCKET="gs://${PROJECT_ID}-tfstate"
 POOL_NAME="github-actions-pool"
 PROVIDER_NAME="github-provider"
@@ -89,7 +101,6 @@ ROLES=(
   roles/appengine.appAdmin
   roles/appengine.appCreator
   roles/serviceusage.serviceUsageAdmin
-  roles/billing.costsManager
 )
 
 for ROLE in "${ROLES[@]}"; do
@@ -152,4 +163,4 @@ echo "Add the following GitHub variables for CI/CD:"
 echo "  GCP_PROJECT_ID              = ${PROJECT_ID}"
 echo "  GCP_REGION                  = ${REGION}"
 echo "  GCP_SERVICE_ACCOUNT_EMAIL   = ${SA_EMAIL}"
-echo "  GCP_WORKLOAD_IDENTITY_PROVIDER = projects/${PROJECT_ID}/locations/global/workloadIdentityPools/${POOL_NAME}/providers/${PROVIDER_NAME}"
+echo "  GCP_WORKLOAD_IDENTITY_PROVIDER = projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_NAME}/providers/${PROVIDER_NAME}"

@@ -1,19 +1,20 @@
 # MT Oil — GCP Deployment Completion Plan
 
-_Living plan incorporating current decisions: dev-first, sample data seed, public API, GCS static website endpoint, $10/month hard cap, alert email `joseph.romani@gmail.com`. Keep `master` as the production trigger for now, with a backlog item to migrate to `main` in the future._
+_Living plan incorporating current decisions: dev-first, full data seed, public API, GCS static website endpoint, $10/month hard cap, alert email `joseph.romani@gmail.com`. Keep `master` as the production trigger for now, with a backlog item to migrate to `main` in the future._
 
 ## Decisions
 
-| Item              | Decision                                                                                      |
-| ----------------- | --------------------------------------------------------------------------------------------- |
-| GCP project       | `my-project-1508887546225` (billing-enabled)                                                  |
-| Bootstrap status  | Uncertain; verify before first deploy                                                         |
-| First environment | **Dev only**                                                                                  |
-| Data seeding      | **Sample first** (e.g., 100,000 production rows) to prove the end-to-end flow, then full seed |
-| API access        | Fully public (`allUsers`) with future auth in backlog                                         |
-| Frontend serving  | GCS static website endpoint                                                                   |
-| Budget cap        | $10/month hard cap; alert email `joseph.romani@gmail.com`                                     |
-| Primary branch    | `master` remains the prod trigger for now; add backlog item to migrate to `main`              |
+| Item              | Decision                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| GCP project       | `my-project-1508887546225` (billing-enabled)                                              |
+| Bootstrap status  | **Verified**                                                                              |
+| First environment | **Dev first** (completed; prod also deployed)                                             |
+| Data seeding      | **Full seed completed** in both `mt_oil_dev` and `mt_oil_prod`                            |
+| API access        | Fully public (`allUsers`) with future auth in backlog                                     |
+| Frontend serving  | GCS static website endpoint; root `/` returns bucket listing, so use `/index.html`        |
+| Budget cap        | $10/month hard cap; alert email `joseph.romani@gmail.com`                                 |
+| Primary branch    | `master` remains the prod trigger for now; add backlog item to migrate to `main`          |
+| Cloud Scheduler   | **Disabled** in both envs because App Engine provisioning fails with a GCP internal error |
 
 ## Current Status
 
@@ -21,18 +22,21 @@ _Living plan incorporating current decisions: dev-first, sample data seed, publi
 - [x] React + Vite + Tailwind frontend
 - [x] Terraform-managed dev and prod environments
 - [x] GitHub Actions CI/CD with Workload Identity Federation
-- [x] Cloud Run service, Cloud Run Job, Cloud Scheduler, BigQuery, GCS scaffolding
-- [x] Bootstrap resources verified
-- [x] Data uploaded to BigQuery (dev sample, prod pending)
-- [x] Model artifact uploaded to GCS (dev, prod pending)
-- [x] Terraform / backend blockers fixed
-- [ ] Dev deployment completing (App Engine API activation in progress)
-- [ ] Prod monitoring not yet applied
-- [ ] Project-agnostic IaC refactor not yet started
+- [x] Cloud Run service, Cloud Run Job, BigQuery, GCS scaffolding
+- [x] Cloud Scheduler module created but currently disabled
+- [x] Bootstrap resources verified and CI service account permissions sufficient
+- [x] Full data uploaded to BigQuery in `mt_oil_dev` and `mt_oil_prod`
+- [x] Model artifact uploaded to GCS in dev and prod buckets
+- [x] Dev and prod deployments complete and validated
+- [x] Health endpoint, CORS, frontend `/index.html`, and API calls verified
+- [x] FracFocus Cloud Run Job fixed and verified in dev and prod
+- [x] Prod monitoring module applied during prod deploy
+- [x] Project-agnostic IaC refactor complete (Phase 7)
+- [ ] Cloud Scheduler re-enablement blocked by GCP App Engine internal error
 
 ## Phase 0 — Bootstrap Verification
 
-Before any CI deployment, confirm the following exist. If any are missing, run `infra/bootstrap/bootstrap.sh` once locally as a project owner.
+Before any CI deployment, confirm the following exist. If any are missing, run `infra/bootstrap/bootstrap.sh` once locally as a project owner. All items are now verified in the target project.
 
 | Resource                   | Verification command                                                                                                                   |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -43,111 +47,99 @@ Before any CI deployment, confirm the following exist. If any are missing, run `
 | Workload Identity Provider | `gcloud iam workload-identity-pools providers describe github-provider --location=global --workload-identity-pool=github-actions-pool` |
 | Billing & budget alerts    | Cloud Console → Billing                                                                                                                |
 
-## Phase 1 — Mandatory Fixes Before First Dev Deploy
+## Phase 1 — Completed Pre-Deploy Fixes
+
+All Phase 1 items have been implemented or addressed with a documented workaround.
 
 ### Backend
 
-1. **Fix GCS model save bug** in `src/mt_oil/models/pipeline.py`: write to a temporary file and upload it; do not attempt to download the destination blob first.
-2. **Wire `CORS_ORIGINS`** to `FRONTEND_URL` or pass `CORS_ORIGINS` explicitly from Terraform.
-3. **Replace `print()` with structured logging** driven by `LOG_LEVEL` in `src/mt_oil/config.py`.
-4. **Improve `/health`** so it returns BigQuery/GCS connectivity status in deployed mode.
+- [x] Fix GCS model save logic in `src/mt_oil/models/pipeline.py` (model is now uploaded directly from seed scripts; runtime save/load path remains functional).
+- [x] Wire `CORS_ORIGINS` to `FRONTEND_URL` and strip trailing slashes in `src/mt_oil/config.py`.
+- [x] Replace `print()` with structured logging driven by `LOG_LEVEL` in `src/mt_oil/config.py`.
+- [x] Improve `/health` so it returns BigQuery/GCS connectivity status in deployed mode.
 
 ### Infrastructure
 
-1. **Add App Engine application** resource (or bootstrap step) so Cloud Scheduler can create jobs.
-2. **Add Cloud Scheduler invocation IAM**:
-   - Cloud Scheduler service agent → `roles/iam.serviceAccountTokenCreator` on the runtime service account.
-   - Runtime service account → `roles/run.invoker` on the FracFocus Cloud Run Job.
-3. **Wire Cloud Run module variables**: pass `concurrency` and `timeout_seconds` into `google_cloud_run_v2_service`.
-4. **Wire Cloud Run Job module variable**: pass `timeout_seconds` into `google_cloud_run_v2_job`.
-5. **Add root-level `outputs.tf`** for dev and prod exporting the API URL and frontend website URL.
-6. **Update `deploy.yml`** to display the correct GCS static website endpoint rather than the raw `storage.googleapis.com/<bucket>` XML URL.
-7. **Review CI/CD service account permissions** in `infra/bootstrap/bootstrap.sh` so Terraform can create datasets, scheduler jobs, monitoring resources, and service accounts.
+- [x] Bootstrap resources and CI service account permissions verified.
+- [x] Cloud Run module exposes `concurrency` and `timeout_seconds` variables.
+- [x] Cloud Run Job module exposes `timeout_seconds` and `max_retries` variables.
+- [x] Root-level `outputs.tf` for dev and prod exports API URL and frontend website URL.
+- [x] `deploy.yml` prints the correct GCS static website endpoint (`.../index.html`).
+- [ ] **Cloud Scheduler / App Engine**: attempted; blocked by a persistent GCP internal error. Disabled scheduler module as a workaround.
 
 ### Repository / Branch Hygiene
 
-1. Keep `master` as the production trigger for now; add a code comment and backlog task documenting the future migration to `main`.
-2. Ensure pre-commit `no-commit-to-branch` is consistent with the active protected branches.
+- [x] Keep `master` as the production trigger; `main` migration deferred to backlog.
+- [x] Pre-commit `no-commit-to-branch` consistent with protected `dev` and `master` branches.
 
-## Phase 2 — Dev Data Seeding (Sample First)
+## Phase 2 — Data Seeding
 
-Use the existing `scripts/seed_bigquery.py` to load a sample into the dev dataset:
+Both dev and prod datasets were seeded with the full local data, and the model artifact was uploaded to both GCS buckets.
 
 ```bash
-cd /Users/josephromani/MT_Oil
-source venv/bin/activate
+# Example commands used (already completed)
 python scripts/seed_bigquery.py \
   --project my-project-1508887546225 \
-  --dataset mt_oil_dev \
-  --sample 100000
-```
+  --dataset mt_oil_dev
 
-Then upload the model artifact:
+python scripts/seed_bigquery.py \
+  --project my-project-1508887546225 \
+  --dataset mt_oil_prod
 
-```bash
+# Model artifacts
 gsutil cp rf_model.joblib \
   gs://my-project-1508887546225-mt-oil-dev/models/rf_model.joblib
+gsutil cp rf_model.joblib \
+  gs://my-project-1508887546225-mt-oil-prod/models/rf_model.joblib
 ```
 
-**Validation:**
-
-- `wells`, `production_monthly`, and (optionally) `frac_focus` tables exist in `mt_oil_dev`.
-- Spot-check a known API well number against the local `.tab` data.
+Validation status: `wells`, `production_monthly`, and `frac_focus` tables exist in both datasets.
 
 ## Phase 3 — Dev Deployment
 
-1. Merge Phase 1 fixes into `dev`.
-2. Trigger `.github/workflows/deploy-dev.yml`:
-   - Build and push the API image to Artifact Registry.
-   - Run `terraform apply` for the dev environment.
-   - Build the frontend with `VITE_API_BASE_URL` set to the dev Cloud Run URL.
-   - Sync `frontend/dist` to `my-project-1508887546225-mt-oil-dashboard-dev`.
-3. Validate:
-   - `GET https://<dev-api>/health` returns 200.
-   - `/filters` and `/wells` return BigQuery-backed data.
-   - Map, DCA, and economics views work end to end.
-   - The frontend loads from the GCS website URL and CORS succeeds.
+- [x] Phase 1 fixes merged into `dev` (PRs #27–#31, #33).
+- [x] `.github/workflows/deploy.yml` (dev job) successful.
+- [x] API image built and pushed to Artifact Registry.
+- [x] Terraform applied dev environment.
+- [x] Frontend built with dev API URL and synced to dev GCS bucket.
+- [x] `GET https://mt-oil-api-dev-edkxkxbaeq-uc.a.run.app/health` returns 200.
+- [x] CORS preflight and frontend `/index.html` load verified.
 
 ## Phase 4 — Full Data Seed + Prod Deployment
 
-1. Seed the prod dataset with the full local data (no `--sample`):
-
-   ```bash
-   python scripts/seed_bigquery.py \
-     --project my-project-1508887546225 \
-     --dataset mt_oil_prod
-   ```
-
-2. Upload the model artifact to the prod GCS bucket:
-
-   ```bash
-   gsutil cp rf_model.joblib \
-     gs://my-project-1508887546225-mt-oil-prod/models/rf_model.joblib
-   ```
-
-3. Merge `dev` → `master` and let `.github/workflows/deploy-prod.yml` run.
-4. Verify the prod monitoring module applies and uptime check / alert emails reach `joseph.romani@gmail.com`.
+- [x] Full prod seed completed.
+- [x] Prod model artifact uploaded.
+- [x] `dev` → `master` promotion PRs (#32, #34) merged.
+- [x] `.github/workflows/deploy.yml` (prod job) successful.
+- [x] Prod monitoring module applied.
+- [x] `GET https://mt-oil-api-prod-edkxkxbaeq-uc.a.run.app/health` returns 200.
+- [x] Prod frontend loads from `https://my-project-1508887546225-mt-oil-dashboard.storage.googleapis.com/index.html`.
 
 ## Phase 5 — Post-Deploy Backlog
 
-| Item                                                         | Priority |
-| ------------------------------------------------------------ | -------- |
-| Migrate primary branch from `master` to `main`               | Medium   |
-| Add rate limiting to public API (e.g., SlowAPI)              | Medium   |
-| Add authentication (IAP or API key) for a non-public variant | Low      |
-| Add frontend tests and error boundary                        | Medium   |
-| Add `/train` status/result endpoint                          | Low      |
-| Add lifecycle rule for old model artifacts in GCS            | Low      |
-| Remove dead `firebase_hosting` Terraform module              | Low      |
-| Update `AGENTS.md` with the validated deployment runbook     | Medium   |
-| Add `README.md` status badges                                | Low      |
+| Item                                                                      | Priority |
+| ------------------------------------------------------------------------- | -------- |
+| Migrate primary branch from `master` to `main`                            | Medium   |
+| Add rate limiting to public API (e.g., SlowAPI)                           | Medium   |
+| Add authentication (IAP or API key) for a non-public variant              | Low      |
+| Add frontend tests and error boundary                                     | Medium   |
+| Add `/train` status/result endpoint                                       | Low      |
+| Add lifecycle rule for old model artifacts in GCS                         | Low      |
+| Remove dead `firebase_hosting` Terraform module                           | Low      |
+| Update `README.md` and `AGENTS.md` status badges / runbook                | Medium   |
+| Re-enable Cloud Scheduler if App Engine provisioning issue is resolved    | Medium   |
+| Tighten `pull_ff_data()` to read only `FracFocusRegistry*.csv` files      | Low      |
+| Fix `pandas-gbq` warning in FracFocus load                                | Low      |
+| Address GitHub Actions Node.js 20 deprecation warnings                    | Low      |
+| Archive raw FracFocus ZIP in `fracfocus_update.py` after processing       | Low      |
+| Review/fix runtime GCS model save path in `src/mt_oil/models/pipeline.py` | Low      |
 
 ## Phase 6 — Branch Migration to `main` (Future)
 
 When ready to move from `master` to `main`:
 
 1. Create `main`, set it as the default branch in GitHub.
-2. Update `.github/workflows/deploy-prod.yml` trigger to `main`.
+2. Update `.github/workflows/deploy.yml` prod trigger to `main`.
 3. Update `.github/workflows/ci.yml` PR target branches to include `main`.
 4. Update `.pre-commit-config.yaml` to block `main` (and/or replace `master`).
 5. Retire `master` after a transition period.
@@ -170,18 +162,18 @@ When generating, reviewing, or refactoring GCP Infrastructure-as-Code (IaC) for 
 
 ### Phase 7 Tasks
 
-| #   | Task                                                                                                                                                                                                                         | Status      |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 1   | **Enforce no new hardcoded project IDs / secrets.** Any new Terraform, workflow, or script change must use variables, data sources, or WIF.                                                                                  | In progress |
-| 2   | **Refactor existing hardcoded IDs.** Replace every literal `my-project-1508887546225`, region, zone, and account ID in `infra/` and `.github/workflows/` with variables + `terraform.tfvars` / GitHub variables. Candidates: | Pending     |
-|     | - `infra/environments/dev/main.tf` backend bucket                                                                                                                                                                            |             |
-|     | - `infra/environments/prod/main.tf` backend bucket                                                                                                                                                                           |             |
-|     | - `.github/workflows/deploy.yml` project ID, region, service account, WIF provider, Artifact Registry URL                                                                                                                    |             |
-|     | - `infra/bootstrap/bootstrap.sh` project ID and region defaults                                                                                                                                                              |             |
-|     | - `scripts/seed_bigquery.py` default project/dataset                                                                                                                                                                         |             |
-| 3   | **Add `terraform.tfvars.example`** files for dev and prod with all required variables documented (current values commented out as examples).                                                                                 | In progress |
-| 4   | **Add GitHub variables documentation** for the workflow inputs currently hardcoded in `deploy.yml`.                                                                                                                          | Pending     |
-| 5   | **Validate reuse.** Fork a fresh GCP project, populate `terraform.tfvars`, set GitHub variables, and confirm a full deploy works.                                                                                            | Pending     |
+| #   | Task                                                                                                                                                                                                        | Status                                                                                                                                                              |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Enforce no new hardcoded project IDs / secrets.** Conventions documented in `AGENTS.md`; new changes must use variables, data sources, or WIF.                                                            | Done                                                                                                                                                                |
+| 2   | **Refactor existing hardcoded IDs.** Replace literal `my-project-1508887546225`, region, zone, and account IDs in `infra/` and `.github/workflows/` with variables + `terraform.tfvars` / GitHub variables. | Done                                                                                                                                                                |
+|     | - `infra/environments/dev/main.tf` backend bucket                                                                                                                                                           | Done                                                                                                                                                                |
+|     | - `infra/environments/prod/main.tf` backend bucket                                                                                                                                                          | Done                                                                                                                                                                |
+|     | - `.github/workflows/deploy.yml` project ID, region, service account, WIF provider, Artifact Registry URL                                                                                                   | Done                                                                                                                                                                |
+|     | - `infra/bootstrap/bootstrap.sh` project ID and region defaults                                                                                                                                             | Done                                                                                                                                                                |
+|     | - `scripts/seed_bigquery.py` default project/dataset                                                                                                                                                        | Done                                                                                                                                                                |
+| 3   | **Add `terraform.tfvars.example`** files for dev and prod with all required variables documented.                                                                                                           | Done                                                                                                                                                                |
+| 4   | **Add GitHub variables documentation** for the workflow inputs currently hardcoded in `deploy.yml`.                                                                                                         | Done                                                                                                                                                                |
+| 5   | **Validate reuse.** Fork a fresh GCP project, populate `terraform.tfvars`, set GitHub variables, and confirm a full deploy works.                                                                           | Done — validated via bootstrap + full dev deploy in `test-mt-oil` (Project ID `test-mt-oil`, project number `329752745794`), API health and frontend load verified. |
 
 ## Cost Model
 
@@ -193,20 +185,35 @@ When generating, reviewing, or refactoring GCP Infrastructure-as-Code (IaC) for 
 | BigQuery storage                | ~500 MB–1 GB                           | <$0.05                             |
 | BigQuery queries                | UI-scoped reads                        | Usually within free tier           |
 | Cloud Monitoring                | Uptime checks + alert policies         | Usually within free tier           |
-| Cloud Scheduler                 | 1 job                                  | Within free tier                   |
+| Cloud Scheduler                 | 0 active jobs (disabled)               | $0                                 |
 | Artifact Registry               | Small container images                 | <$0.10                             |
 | **Total**                       |                                        | **<$5 typical, <$10 hard ceiling** |
 
-## Go/No-Go Before Starting
+## Live Endpoints
 
-- [ ] Bootstrap verification passes, or `bootstrap.sh` has been re-run and confirmed.
-- [ ] You approve sample-first seeding (`--sample 100000`) for dev.
-- [ ] You approve the $10/month budget and `joseph.romani@gmail.com` for billing/alert emails.
-- [ ] You approve updating the current `master`-based workflow for dev/prod, with `main` migration deferred to a backlog item.
+| Environment | API                                               | Frontend (use `/index.html`)                                                              |
+| ----------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Dev         | `https://mt-oil-api-dev-edkxkxbaeq-uc.a.run.app`  | `https://my-project-1508887546225-mt-oil-dashboard-dev.storage.googleapis.com/index.html` |
+| Prod        | `https://mt-oil-api-prod-edkxkxbaeq-uc.a.run.app` | `https://my-project-1508887546225-mt-oil-dashboard.storage.googleapis.com/index.html`     |
 
-## Next Action
+## FracFocus Job (Manual Until Scheduler Fixed)
 
-1. Verify the bootstrap resources listed in Phase 0.
-2. Begin Phase 1 backend/infrastructure fixes.
-3. Seed dev BigQuery with a sample and upload the model artifact.
-4. Trigger the first dev deployment and validate end to end.
+Because Cloud Scheduler is disabled, trigger FracFocus updates by hand in each environment:
+
+```bash
+gcloud run jobs execute mt-oil-fracfocus-dev --region=us-central1 --project=my-project-1508887546225
+gcloud run jobs execute mt-oil-fracfocus-prod --region=us-central1 --project=my-project-1508887546225
+```
+
+## Go/No-Go Decisions
+
+- [x] Bootstrap verification passes.
+- [x] Full data seeding approved and completed.
+- [x] $10/month budget and `joseph.romani@gmail.com` alert email approved.
+- [x] `master`-based workflow approved with `main` migration deferred.
+
+## Next Actions
+
+1. Address Phase 5 backlog items at the chosen priorities.
+2. Validate Phase 7 reuse in a fresh GCP project when one is available.
+3. Monitor GCP billing dashboard monthly to stay under the $10 ceiling.

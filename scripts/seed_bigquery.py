@@ -1,7 +1,7 @@
 """One-time seed script: load local MT DNRC .tab files into BigQuery.
 
 Usage:
-    python scripts/seed_bigquery.py --project my-project-1508887546225 --dataset mt_oil_dev
+    python scripts/seed_bigquery.py --project <GCP_PROJECT_ID> --dataset <DATASET>
 
 This script is intended to be run from a developer workstation that already has
 MT_HistoricalWellList.tab and MT_HistoricalWellProduction.tab downloaded.
@@ -164,8 +164,8 @@ def upload_table(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Seed MT Oil BigQuery tables")
-    parser.add_argument("--project", default="my-project-1508887546225")
-    parser.add_argument("--dataset", default="mt_oil_dev")
+    parser.add_argument("--project", required=True, help="GCP project ID")
+    parser.add_argument("--dataset", required=True, help="BigQuery dataset ID")
     parser.add_argument(
         "--sample",
         type=int,

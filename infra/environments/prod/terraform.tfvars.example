@@ -2,7 +2,7 @@
 # Copy this file to terraform.tfvars and adjust values for your own project.
 
 # GCP project to deploy into.
-# project_id = "my-project-1508887546225"
+# project_id = "my-gcp-project"
 
 # Primary region for Cloud Run, GCS, etc.
 # region = "us-central1"
@@ -18,7 +18,7 @@
 
 # Container image deployed to Cloud Run and Cloud Run Jobs.
 # Typically set by CI/CD; only override here for local/manual testing.
-# api_image = "us-central1-docker.pkg.dev/my-project-1508887546225/mt-oil-api/mt-oil-api:latest"
+# api_image = "us-central1-docker.pkg.dev/my-gcp-project/mt-oil-api/mt-oil-api:latest"
 
 # Email address for prod alert notifications (optional).
 # alert_email = "joseph.romani@gmail.com"

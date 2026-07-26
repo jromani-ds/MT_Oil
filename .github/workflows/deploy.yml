@@ -17,12 +17,13 @@ on:
         type: string
 
 env:
-  GCP_PROJECT_ID: my-project-1508887546225
-  GCP_REGION: us-central1
-  GCP_SERVICE_ACCOUNT_EMAIL: github-actions@my-project-1508887546225.iam.gserviceaccount.com
-  GCP_WORKLOAD_IDENTITY_PROVIDER: projects/1099152738416/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider # pragma: allowlist secret
-  ARTIFACT_REGISTRY_IMAGE: us-central1-docker.pkg.dev/my-project-1508887546225/mt-oil-api/mt-oil-api
-  IMAGE_SHA_TAG: us-central1-docker.pkg.dev/my-project-1508887546225/mt-oil-api/mt-oil-api:${{ github.sha }}
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  GCP_SERVICE_ACCOUNT_EMAIL: ${{ vars.GCP_SERVICE_ACCOUNT_EMAIL }}
+  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  ARTIFACT_REGISTRY_HOST: ${{ vars.GCP_REGION }}-docker.pkg.dev
+  ARTIFACT_REGISTRY_IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/mt-oil-api/mt-oil-api
+  IMAGE_SHA_TAG: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/mt-oil-api/mt-oil-api:${{ github.sha }}
 
 jobs:
   deploy:
@@ -59,7 +60,7 @@ jobs:
       - name: Login to Artifact Registry
         uses: docker/login-action@v3
         with:
-          registry: us-central1-docker.pkg.dev
+          registry: ${{ env.ARTIFACT_REGISTRY_HOST }}
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
@@ -83,8 +84,14 @@ jobs:
       - name: Terraform apply
         run: |
           cd ${{ inputs.tf_dir }}
-          terraform init
-          terraform apply -var="api_image=${{ env.IMAGE_SHA_TAG }}" -auto-approve -input=false
+          terraform init \
+            -backend-config="bucket=${{ vars.GCP_PROJECT_ID }}-tfstate" \
+            -backend-config="prefix=${{ inputs.environment }}/terraform.tfstate"
+          terraform apply \
+            -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
+            -var="region=${{ vars.GCP_REGION }}" \
+            -var="api_image=${{ env.IMAGE_SHA_TAG }}" \
+            -auto-approve -input=false
 
       - name: Get API URL
         id: api
