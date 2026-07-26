@@ -3,7 +3,7 @@ from urllib.request import urlopen
 import shutil
 import os
 import pandas as pd
-from typing import Tuple, Dict
+from typing import Tuple
 
 
 def pull_prod_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -85,7 +85,7 @@ def pull_well_data() -> pd.DataFrame:
 
 def pull_ff_data(state_name: str = "Montana") -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Retrieves FracFocus data.
+    Retrieves FracFocus registry data for a single state.
 
     Args:
         state_name (str): Name of the state to filter data for. Defaults to "Montana".
@@ -93,45 +93,64 @@ def pull_ff_data(state_name: str = "Montana") -> Tuple[pd.DataFrame, pd.DataFram
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]:
             - FracFocusRegistry_df: Registry data.
-            - registryupload_df: Registry upload data.
+            - registryupload_df: Empty placeholder kept for backwards compatibility.
     """
     url = "https://www.fracfocusdata.org/digitaldownload/FracFocusCSV.zip"
     file_name = "FracFocusCSV.zip"
+    # Only the columns needed by preprocess_ff_data are loaded, which keeps the
+    # memory footprint small enough to run in a 4 GiB Cloud Run Job container.
+    registry_cols = {
+        "APINumber",
+        "StateName",
+        "Purpose",
+        "PercentHFJob",
+        "MassIngredient",
+        "TVD",
+        "TotalBaseWaterVolume",
+        "TotalBaseNonWaterVolume",
+    }
+    required_cols = {"APINumber", "Purpose", "MassIngredient"}
+    chunksize = 200_000
 
     try:
-        # extracting zipfile from URL
+        print("Downloading FracFocus data...")
         with urlopen(url) as response, open(file_name, "wb") as out_file:
             shutil.copyfileobj(response, out_file)
 
-        # extracting required files from zipfile and put in dictionary
+        registry_chunks: list[pd.DataFrame] = []
         with zipfile.ZipFile(file_name) as zip_file:
-            dfs: Dict[str, pd.DataFrame] = {
-                csv_file.filename: pd.read_csv(
-                    zip_file.open(csv_file.filename), low_memory=False
-                )
-                for csv_file in zip_file.infolist()
-                if csv_file.filename.endswith(".csv")
-            }
-
-        registryupload_keys = [item for item in list(dfs.keys()) if "Frac" not in item]
-        registryupload_dict = {x: dfs[x] for x in registryupload_keys}
-        registryupload_df = pd.concat(registryupload_dict, axis=0)
-
-        FracFocusRegistry_keys = [
-            item for item in list(dfs.keys()) if "registryupload" not in item
-        ]
-        FracFocusRegistry_dict = {x: dfs[x] for x in FracFocusRegistry_keys}
-        FracFocusRegistry_df = pd.concat(FracFocusRegistry_dict, axis=0)
-
-        if state_name:
-            FracFocusRegistry_df = FracFocusRegistry_df[
-                FracFocusRegistry_df["StateName"] == state_name
-            ]
-            registryupload_df = registryupload_df[
-                registryupload_df["StateName"] == state_name
+            registry_files = [
+                info
+                for info in zip_file.infolist()
+                if info.filename.endswith(".csv")
+                and "registryupload" not in info.filename.lower()
             ]
 
-        return FracFocusRegistry_df, registryupload_df
+            if not registry_files:
+                raise ValueError("No FracFocus registry CSVs found in archive")
+
+            for info in registry_files:
+                print(f"Reading {info.filename}...")
+                with zip_file.open(info.filename) as f:
+                    for chunk in pd.read_csv(
+                        f,
+                        low_memory=False,
+                        chunksize=chunksize,
+                        usecols=lambda col: col in registry_cols,
+                    ):
+                        if state_name and "StateName" in chunk.columns:
+                            chunk = chunk[chunk["StateName"] == state_name]
+                        registry_chunks.append(chunk)
+
+        if not registry_chunks:
+            raise ValueError("No FracFocus data chunks found")
+
+        registry_df = pd.concat(registry_chunks, ignore_index=True)
+        missing = required_cols - set(registry_df.columns)
+        if missing:
+            raise ValueError(f"Required columns missing from FracFocus data: {missing}")
+
+        return registry_df, pd.DataFrame()
 
     finally:
         if os.path.exists(file_name):
