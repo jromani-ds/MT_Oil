@@ -9,6 +9,6 @@ output "bucket_url" {
 }
 
 output "website_url" {
-  description = "GCS static website endpoint URL"
-  value       = "https://${google_storage_bucket.this.name}.storage.googleapis.com/"
+  description = "GCS static website origin URL (no trailing slash)"
+  value       = "https://${google_storage_bucket.this.name}.storage.googleapis.com"
 }
