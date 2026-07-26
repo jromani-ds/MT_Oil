@@ -32,10 +32,10 @@ scripts/           One-off data seed and operational scripts
 
 ## Live Environments
 
-| Environment | Branch   | BigQuery Dataset | GCS Static Site Bucket |
-| ----------- | -------- | ---------------- | ---------------------- |
-| Dev         | `dev`    | `mt_oil_dev`     | `mt-oil-dashboard-dev` |
-| Prod        | `master` | `mt_oil_prod`    | `mt-oil-dashboard`     |
+| Environment | Branch | BigQuery Dataset | GCS Static Site Bucket |
+| ----------- | ------ | ---------------- | ---------------------- |
+| Dev         | `dev`  | `mt_oil_dev`     | `mt-oil-dashboard-dev` |
+| Prod        | `main` | `mt_oil_prod`    | `mt-oil-dashboard`     |
 
 The frontend is served from `/index.html` on the GCS static website endpoint (the bucket root returns an object listing).
 
@@ -119,9 +119,9 @@ npm run test
 
 1. Cut a feature branch from `dev`.
 2. Open a PR to `dev`.
-3. After `dev` passes CI, open a PR from `dev` to `master` for production.
+3. After `dev` passes CI, open a PR from `dev` to `main` for production.
 
-Direct pushes to `dev` and `master` are blocked by branch protection.
+Direct pushes to `dev` and `main` are blocked by branch protection.
 
 ## Operations
 
