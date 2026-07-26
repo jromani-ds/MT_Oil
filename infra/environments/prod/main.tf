@@ -193,6 +193,9 @@ module "fracfocus_job" {
     JOB_NAME         = "fracfocus-update"
   }
 
+  command = ["python"]
+  args    = ["-m", "mt_oil.jobs.fracfocus_update"]
+
   labels = local.labels
 
   depends_on = [module.gcs, module.bigquery]
