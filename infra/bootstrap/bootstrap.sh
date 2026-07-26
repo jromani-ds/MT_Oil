@@ -87,6 +87,7 @@ ROLES=(
   roles/monitoring.editor
   roles/cloudscheduler.admin
   roles/appengine.appAdmin
+  roles/appengine.appCreator
   roles/serviceusage.serviceUsageAdmin
   roles/billing.costsManager
 )
