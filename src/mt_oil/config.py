@@ -36,6 +36,7 @@ class Settings:
     port: int
     cors_origins: List[str]
     skip_data_load: bool
+    rate_limit: str
 
 
 def _split_cors(raw: Optional[str], frontend_url: Optional[str]) -> List[str]:
@@ -81,6 +82,7 @@ def load_settings() -> Settings:
         cors_origins=_split_cors(os.getenv("CORS_ORIGINS"), os.getenv("FRONTEND_URL")),
         skip_data_load=os.getenv("SKIP_DATA_LOAD", "false").lower()
         in ("1", "true", "yes"),
+        rate_limit=os.getenv("RATE_LIMIT", "60/minute"),
     )
 
 
