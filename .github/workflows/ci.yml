@@ -8,6 +8,20 @@ permissions:
   contents: read
 
 jobs:
+  github-config:
+    name: Validate GitHub Actions config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate required repository config
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          missing=0
+          if [ -z "${{ vars.GCP_PROJECT_ID }}" ]; then echo "::error::GCP_PROJECT_ID repository variable is not set"; missing=1; fi
+          if [ -z "${{ vars.GCP_REGION }}" ]; then echo "::error::GCP_REGION repository variable is not set"; missing=1; fi
+          if [ -z "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" ]; then echo "::error::GCP_SERVICE_ACCOUNT_EMAIL repository secret is not set"; missing=1; fi
+          if [ -z "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ]; then echo "::error::GCP_WORKLOAD_IDENTITY_PROVIDER repository secret is not set"; missing=1; fi
+          if [ "$missing" -ne 0 ]; then exit 1; fi
+
   backend:
     name: Backend tests
     runs-on: ubuntu-latest

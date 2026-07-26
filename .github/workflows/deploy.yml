@@ -19,8 +19,6 @@ on:
 env:
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   GCP_REGION: ${{ vars.GCP_REGION }}
-  GCP_SERVICE_ACCOUNT_EMAIL: ${{ vars.GCP_SERVICE_ACCOUNT_EMAIL }}
-  GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
   ARTIFACT_REGISTRY_HOST: ${{ vars.GCP_REGION }}-docker.pkg.dev
   ARTIFACT_REGISTRY_IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/mt-oil-api/mt-oil-api
   IMAGE_SHA_TAG: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/mt-oil-api/mt-oil-api:${{ github.sha }}
@@ -38,12 +36,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate required config
+        run: |
+          missing=0
+          if [ -z "${{ vars.GCP_PROJECT_ID }}" ]; then echo "::error::GCP_PROJECT_ID repository variable is not set"; missing=1; fi
+          if [ -z "${{ vars.GCP_REGION }}" ]; then echo "::error::GCP_REGION repository variable is not set"; missing=1; fi
+          if [ -z "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" ]; then echo "::error::GCP_SERVICE_ACCOUNT_EMAIL repository secret is not set"; missing=1; fi
+          if [ -z "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ]; then echo "::error::GCP_WORKLOAD_IDENTITY_PROVIDER repository secret is not set"; missing=1; fi
+          if [ "$missing" -ne 0 ]; then exit 1; fi
+
       - name: Authenticate to Google Cloud
         id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ env.GCP_SERVICE_ACCOUNT_EMAIL }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
           audience: https://github.com/${{ github.repository }}
           token_format: access_token
           access_token_lifetime: 1800s
