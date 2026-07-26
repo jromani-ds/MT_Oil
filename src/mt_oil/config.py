@@ -45,11 +45,14 @@ def _split_cors(raw: Optional[str], frontend_url: Optional[str]) -> List[str]:
     when neither value is provided. This keeps deployed CORS locked to the
     known static frontend origin while preserving simple local development.
     """
+    origins: List[str] = []
     if raw:
-        return [origin.strip() for origin in raw.split(",") if origin.strip()]
-    if frontend_url:
-        return [frontend_url.strip()]
-    return ["*"]
+        origins = [
+            origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()
+        ]
+    elif frontend_url:
+        origins = [frontend_url.strip().rstrip("/")]
+    return origins if origins else ["*"]
 
 
 def load_settings() -> Settings:

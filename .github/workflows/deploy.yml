@@ -117,4 +117,5 @@ jobs:
       - name: Show deployed URLs
         run: |
           echo "API: ${{ steps.api.outputs.url }}"
-          echo "Frontend: https://${{ inputs.frontend_bucket }}.storage.googleapis.com/"
+          echo "Frontend entry: https://${{ inputs.frontend_bucket }}.storage.googleapis.com/index.html"
+          echo "Note: GCS static website serving may not resolve / to index.html for this bucket URL; use /index.html as the entry point."
