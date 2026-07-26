@@ -94,12 +94,12 @@ terraform apply -var="project_id=<GCP_PROJECT_ID>" -var="region=<REGION>" -var="
 
 The reusable `deploy.yml` workflow reads per-project configuration from repository variables (Settings > Secrets and variables > Actions > Variables). Configure these before running CI/CD in a new GCP project:
 
-| Name                             | Description                                               | Example                                                                                                       |
-| -------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `GCP_PROJECT_ID`                 | GCP project ID to deploy into                             | `my-project-1508887546225`                                                                                    |
-| `GCP_REGION`                     | Primary GCP region for Cloud Run, Artifact Registry, etc. | `us-central1`                                                                                                 |
-| `GCP_SERVICE_ACCOUNT_EMAIL`      | Workload Identity service account used by GitHub Actions  | `github-actions@my-project-1508887546225.iam.gserviceaccount.com`                                             |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full Workload Identity Provider resource name             | `projects/1099152738416/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider` |
+| Name                             | Description                                               | Example                                                                                                              |
+| -------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `GCP_PROJECT_ID`                 | GCP project ID to deploy into                             | `<GCP_PROJECT_ID>`                                                                                                   |
+| `GCP_REGION`                     | Primary GCP region for Cloud Run, Artifact Registry, etc. | `us-central1`                                                                                                        |
+| `GCP_SERVICE_ACCOUNT_EMAIL`      | Workload Identity service account used by GitHub Actions  | `github-actions@<GCP_PROJECT_ID>.iam.gserviceaccount.com`                                                            |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full Workload Identity Provider resource name             | `projects/<GCP_PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider` |
 
 Environment-specific inputs (bucket names, locations, alert email, etc.) are set in Terraform (`terraform.tfvars` or via `-var` flags in CI). The current CI passes `project_id`, `region`, and `api_image` directly; remaining variables can keep their generic defaults or be overridden per environment.
 
