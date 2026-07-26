@@ -7,10 +7,14 @@ resource "google_cloud_run_v2_service" "this" {
 
   template {
     service_account = var.service_account_email
+
     scaling {
       min_instance_count = var.min_scale
       max_instance_count = var.max_scale
     }
+
+    timeout                          = "${var.timeout_seconds}s"
+    max_instance_request_concurrency = var.concurrency
 
     containers {
       image = var.image

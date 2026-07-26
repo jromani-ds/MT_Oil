@@ -1,4 +1,20 @@
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
+# Cloud Scheduler requires an App Engine application in the chosen region.
+# If a Firestore default database already exists in the same region, set
+# database_type = "CLOUD_FIRESTORE" so the provider links to it instead of
+# trying to create a new one.
+resource "google_app_engine_application" "this" {
+  count         = var.enabled ? 1 : 0
+  project       = var.project_id
+  location_id   = var.app_engine_location
+  database_type = "CLOUD_FIRESTORE"
+}
+
 resource "google_cloud_scheduler_job" "this" {
+  count            = var.enabled ? 1 : 0
   name             = var.job_name
   project          = var.project_id
   region           = var.region
@@ -14,4 +30,24 @@ resource "google_cloud_scheduler_job" "this" {
       service_account_email = var.service_account_email
     }
   }
+
+  depends_on = [google_app_engine_application.this]
+}
+
+# Allow the runtime service account to invoke the target Cloud Run Job.
+resource "google_cloud_run_v2_job_iam_member" "invoker" {
+  count    = var.enabled ? 1 : 0
+  project  = var.project_id
+  location = var.region
+  name     = var.cloud_run_job_name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.service_account_email}"
+}
+
+# Allow the Cloud Scheduler service agent to impersonate the runtime SA.
+resource "google_service_account_iam_member" "scheduler_token_creator" {
+  count              = var.enabled ? 1 : 0
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${var.service_account_email}"
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
 }

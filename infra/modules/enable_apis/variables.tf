@@ -17,6 +17,7 @@ variable "apis" {
     "iamcredentials.googleapis.com",
     "monitoring.googleapis.com",
     "logging.googleapis.com",
-    "firebase.googleapis.com",
+    "billingbudgets.googleapis.com",
+    "appengine.googleapis.com",
   ]
 }

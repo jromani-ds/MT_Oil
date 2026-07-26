@@ -161,7 +161,8 @@ module "cloud_run" {
     GCP_PROJECT_ID    = var.project_id
     GCS_DATA_BUCKET   = module.gcs.bucket_name
     BIGQUERY_DATASET  = module.bigquery.dataset_id
-    FRONTEND_URL      = "https://storage.googleapis.com/${module.frontend_gcs.bucket_name}"
+    FRONTEND_URL      = module.frontend_gcs.website_url
+    CORS_ORIGINS      = module.frontend_gcs.website_url
     MODEL_PATH        = "gs://${module.gcs.bucket_name}/models/rf_model.joblib"
     ENABLE_LOCAL_DATA = "false"
     LOG_LEVEL         = "info"
@@ -203,6 +204,7 @@ module "fracfocus_scheduler" {
   project_id = var.project_id
   region     = var.scheduler_region
 
+  enabled               = false
   job_name              = "mt-oil-fracfocus-${local.env}-monthly"
   schedule              = "0 2 1 * *"
   time_zone             = "America/Denver"
