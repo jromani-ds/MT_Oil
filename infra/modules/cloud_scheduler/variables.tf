@@ -35,6 +35,12 @@ variable "service_account_email" {
   type        = string
 }
 
+variable "enabled" {
+  description = "Whether to create Cloud Scheduler resources. Disable if the GCP project cannot provision an App Engine app."
+  type        = bool
+  default     = true
+}
+
 variable "app_engine_location" {
   description = "App Engine location for Cloud Scheduler (must match scheduler region, e.g. us-central for us-central1)"
   type        = string
