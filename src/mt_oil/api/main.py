@@ -1,9 +1,14 @@
-from fastapi import FastAPI, HTTPException, Query, Path, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, Path, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import pandas as pd
 import numpy as np
 from contextlib import asynccontextmanager
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from mt_oil.config import settings, logger
 from mt_oil.data.loader import pull_well_data, pull_prod_data, pull_ff_data
@@ -17,6 +22,17 @@ from mt_oil.processing.features import (
 from mt_oil.domain.decline_curve import fit_best_decline, arps_decline, duong_decline
 from mt_oil.domain.economics import calculate_npv
 from mt_oil.models.pipeline import train_and_evaluate, load_model, save_model
+
+
+def _rate_limit_key(request: Request) -> str:
+    """Use the first X-Forwarded-For IP when behind Cloud Run, falling back to the direct client host."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=_rate_limit_key)
 
 
 # Global Data Cache
@@ -133,6 +149,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="MT Oil API", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -144,7 +163,8 @@ app.add_middleware(
 
 
 @app.get("/health")
-def health_check():
+@limiter.limit(settings.rate_limit)
+def health_check(request: Request):
     use_bq = (
         not settings.enable_local_data
         and bool(settings.gcp_project_id)
@@ -161,7 +181,8 @@ def health_check():
 
 
 @app.get("/filters")
-def get_filter_options():
+@limiter.limit(settings.rate_limit)
+def get_filter_options(request: Request):
     if db.well_df is None:
         raise HTTPException(status_code=503, detail="Data not loaded")
 
@@ -173,7 +194,9 @@ def get_filter_options():
 
 
 @app.get("/wells")
+@limiter.limit(settings.rate_limit)
 def get_wells(
+    request: Request,
     limit: int = 100,
     skip: int = 0,
     has_production: bool = False,
@@ -203,7 +226,10 @@ def get_wells(
 
 
 @app.get("/wells/{api_number}")
-def get_well_details(api_number: str = Path(..., title="API Well Number")):
+@limiter.limit(settings.rate_limit)
+def get_well_details(
+    request: Request, api_number: str = Path(..., title="API Well Number")
+):
     if db.well_df is None:
         raise HTTPException(status_code=503, detail="Data not loaded")
 
@@ -216,7 +242,8 @@ def get_well_details(api_number: str = Path(..., title="API Well Number")):
 
 
 @app.get("/wells/{api_number}/production")
-def get_well_production(api_number: str):
+@limiter.limit(settings.rate_limit)
+def get_well_production(request: Request, api_number: str):
     if db.prod_df is None:
         raise HTTPException(status_code=503, detail="Data not loaded")
 
@@ -238,7 +265,8 @@ def get_well_production(api_number: str):
 
 
 @app.post("/train")
-async def train_model(background_tasks: BackgroundTasks):
+@limiter.limit("5/minute")
+async def train_model(request: Request, background_tasks: BackgroundTasks):
     """
     Triggers model training in the background. Enforces single-concurrency.
     """
@@ -266,10 +294,13 @@ async def train_model(background_tasks: BackgroundTasks):
 
 
 @app.post("/wells/{api_number}/decline")
+@limiter.limit("30/minute")
 def fit_decline_curve(
-    api_number: str, method: str = Query("auto", enum=["auto", "arps", "duong"])
+    request: Request,
+    api_number: str,
+    method: str = Query("auto", enum=["auto", "arps", "duong"]),
 ):
-    prod_hist = get_well_production(api_number)
+    prod_hist = get_well_production(request, api_number)
     if not prod_hist:
         raise HTTPException(status_code=404, detail="No production history found")
 
@@ -348,7 +379,9 @@ def fit_decline_curve(
 
 
 @app.post("/wells/{api_number}/economics")
+@limiter.limit("30/minute")
 def run_economics(
+    request: Request,
     api_number: str,
     oil_price: float = 70.0,
     gas_price: float = 3.5,
@@ -357,12 +390,12 @@ def run_economics(
     opex: float = 10.0,
     abandonment_rate_daily: float = 5.0,
 ):
-    fit_res = fit_decline_curve(api_number, method="auto")
+    fit_res = fit_decline_curve(request, api_number, method="auto")
     if not fit_res["forecast"]["production"]:
         raise HTTPException(status_code=400, detail="Could not forecast production")
 
     forecast_oil_prod = fit_res["forecast"]["production"]
-    prod_hist = get_well_production(api_number)
+    prod_hist = get_well_production(request, api_number)
 
     # Extract historical oil and gas production
     historical_oil_prod = [

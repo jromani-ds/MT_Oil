@@ -32,6 +32,8 @@ _Living plan incorporating current decisions: dev-first, full data seed, public 
 - [x] FracFocus Cloud Run Job fixed and verified in dev and prod
 - [x] Prod monitoring module applied during prod deploy
 - [x] Project-agnostic IaC refactor complete (Phase 7)
+- [x] API rate limiting enabled via SlowAPI
+- [x] Frontend Vitest test suite and React ErrorBoundary added
 - [ ] Cloud Scheduler re-enablement blocked by GCP App Engine internal error
 
 ## Phase 0 — Bootstrap Verification
@@ -120,14 +122,15 @@ Validation status: `wells`, `production_monthly`, and `frac_focus` tables exist 
 | Item                                                                      | Priority |
 | ------------------------------------------------------------------------- | -------- |
 | Migrate primary branch from `master` to `main`                            | Medium   |
-| Add rate limiting to public API (e.g., SlowAPI)                           | Medium   |
+| Add rate limiting to public API (SlowAPI)                                 | Done     |
 | Add authentication (IAP or API key) for a non-public variant              | Low      |
-| Add frontend tests and error boundary                                     | Medium   |
+| Add frontend tests and error boundary                                     | Done     |
 | Add `/train` status/result endpoint                                       | Low      |
 | Add lifecycle rule for old model artifacts in GCS                         | Low      |
 | Remove dead `firebase_hosting` Terraform module                           | Low      |
-| Update `README.md` and `AGENTS.md` status badges / runbook                | Medium   |
-| Re-enable Cloud Scheduler if App Engine provisioning issue is resolved    | Medium   |
+| Update `README.md` and `AGENTS.md` status badges / runbook                | Done     |
+| Re-enable Cloud Scheduler if App Engine provisioning issue is resolved    | Blocked  |
+| Migrate primary branch from `master` to `main`                            | Medium   |
 | Tighten `pull_ff_data()` to read only `FracFocusRegistry*.csv` files      | Low      |
 | Fix `pandas-gbq` warning in FracFocus load                                | Low      |
 | Address GitHub Actions Node.js 20 deprecation warnings                    | Low      |

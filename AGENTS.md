@@ -30,8 +30,8 @@ Full-stack Oil & Gas analytics application built as a public portfolio / showcas
 
 ## Tech Stack
 
-- **Backend**: Python 3.11, FastAPI, Uvicorn, Pandas, NumPy, SciPy, scikit-learn
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Recharts, react-leaflet
+- **Backend**: Python 3.11, FastAPI, Uvicorn, Pandas, NumPy, SciPy, scikit-learn, SlowAPI
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Recharts, react-leaflet, Vitest
 - **Data**: BigQuery (analytical warehouse), Google Cloud Storage (data lake / model artifacts)
 - **Compute**: Cloud Run (API), Cloud Run Jobs (monthly FracFocus ETL)
 - **IaC**: Terraform with GCS remote state backend
@@ -42,7 +42,7 @@ Full-stack Oil & Gas analytics application built as a public portfolio / showcas
 1. **Never commit secrets, keys, or credentials.** All runtime secrets are resolved from Google Secret Manager / GitHub encrypted variables; authentication in CI uses Workload Identity Federation.
 2. **Branch workflow**: always cut a feature branch from `dev`, open PR to `dev`, then PR `dev` → `master`. Direct pushes to `dev` and `master` are blocked by branch protection.
 3. **Pre-commit hooks must pass**: `pre-commit run --all-files` before any PR.
-4. **Tests must pass**: `pytest tests/` for backend; `npm run lint && npm run build` for frontend.
+4. **Tests must pass**: `pytest tests/` for backend; `npm run lint && npm run build && npm run test` for frontend.
 5. **Terraform**: never apply locally to shared environments; use CI/CD or review `terraform plan` carefully.
 
 ## Common Commands
@@ -59,6 +59,7 @@ uvicorn src.mt_oil.api.main:app --reload
 cd frontend
 npm install
 npm run dev
+npm run test
 npm run build
 
 # Pre-commit
@@ -76,7 +77,7 @@ terraform apply -var="project_id=<GCP_PROJECT_ID>" -var="region=<REGION>" -var="
 ## Important Code Conventions
 
 - Backend source lives at `src/mt_oil/`. Always use the package namespace.
-- Environment-specific configuration must be externalized (env vars, Secret Manager). Avoid hardcoded paths and URLs.
+- Environment-specific configuration must be externalized (env vars, Secret Manager). Avoid hardcoded paths and URLs. `RATE_LIMIT` controls the default per-IP read limit.
 - The backend reads well/production data from **BigQuery**, not from local `.tab` files, in deployed environments.
 - Model artifact (`rf_model.joblib`) is loaded from **GCS**; do not commit it.
 
@@ -117,6 +118,7 @@ This is a personal demo with a strict ~$10/month budget. Key limits:
 - `src/mt_oil/data/loader.py` historically downloads large ZIPs on startup. In the cloud deployment, data is loaded from BigQuery; the downloader is only used by the optional monthly FracFocus job.
 - Frontend API client base URL is set at build time via `VITE_API_BASE_URL`.
 - Local development still uses the local `.tab`/`.csv` files for fast iteration.
+- The public API is rate-limited with SlowAPI; configure `RATE_LIMIT` to change the default read limit.
 
 ## Deployment Environments
 
