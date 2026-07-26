@@ -106,16 +106,21 @@ def run() -> None:
             "GCP_PROJECT_ID and BIGQUERY_DATASET environment variables are required"
         )
 
-    raw_ff, _ = pull_ff_data(state_name="Montana")
-    df = _aggregate_fracfocus(raw_ff)
-
-    # Archive the downloaded ZIP if a data bucket is configured.
+    raw_ff, _ = pull_ff_data(state_name="Montana", keep_zip=True)
     zip_path = Path("FracFocusCSV.zip")
-    if zip_path.exists() and settings.gcs_data_bucket:
-        archive_uri = _archive_raw_zip(zip_path)
-        print(f"Archived raw ZIP to {archive_uri}")
+    try:
+        df = _aggregate_fracfocus(raw_ff)
 
-    _upload_to_bigquery(df)
+        # Archive the downloaded ZIP if a data bucket is configured.
+        if zip_path.exists() and settings.gcs_data_bucket:
+            archive_uri = _archive_raw_zip(zip_path)
+            print(f"Archived raw ZIP to {archive_uri}")
+
+        _upload_to_bigquery(df)
+    finally:
+        if zip_path.exists():
+            zip_path.unlink()
+
     print("FracFocus update job complete.")
 
 

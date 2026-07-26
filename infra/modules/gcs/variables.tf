@@ -26,6 +26,12 @@ variable "lifecycle_age_days" {
   default     = 90
 }
 
+variable "model_artifact_delete_age_days" {
+  description = "Delete objects under the models/ prefix after N days to control artifact storage costs"
+  type        = number
+  default     = 180
+}
+
 variable "uniform_bucket_level_access" {
   description = "Enable uniform bucket-level access"
   type        = bool

@@ -38,4 +38,15 @@ resource "google_storage_bucket" "this" {
       storage_class = "COLDLINE"
     }
   }
+
+  # Keep model-artifact storage from growing indefinitely under the $10 budget cap.
+  lifecycle_rule {
+    condition {
+      age            = var.model_artifact_delete_age_days
+      matches_prefix = ["models/"]
+    }
+    action {
+      type = "Delete"
+    }
+  }
 }

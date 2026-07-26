@@ -25,7 +25,7 @@ Full-stack Oil & Gas analytics application built as a public portfolio / showcas
   GCS static website    Cloud Run            BigQuery + GCS
   (static frontend)     (FastAPI backend)    (data warehouse + lake)
 
-> Note: Firebase Hosting was replaced by a Cloud Storage static website bucket because the Firebase Management API was not provisionable in this GCP project under Terraform.
+> Note: Firebase Hosting was replaced by a Cloud Storage static website bucket because the Firebase Management API was not provisionable in this GCP project under Terraform. The unused `firebase_hosting` Terraform module has been removed from the repository.
 ```
 
 ## Tech Stack
@@ -116,6 +116,8 @@ This is a personal demo with a strict ~$10/month budget. Key limits:
 ## Gotchas
 
 - `src/mt_oil/data/loader.py` historically downloads large ZIPs on startup. In the cloud deployment, data is loaded from BigQuery; the downloader is only used by the optional monthly FracFocus job.
+- The FracFocus Cloud Run Job now archives the raw downloaded ZIP to `raw/fracfocus/` in the GCS data bucket before cleanup.
+- A GCS lifecycle rule deletes objects under the `models/` prefix after 180 days to keep model-artifact storage from growing under the tight budget cap.
 - Frontend API client base URL is set at build time via `VITE_API_BASE_URL`.
 - Local development still uses the local `.tab`/`.csv` files for fast iteration.
 - The public API is rate-limited with SlowAPI; configure `RATE_LIMIT` to change the default read limit.

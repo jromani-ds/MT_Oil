@@ -14,10 +14,23 @@ from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+from mt_oil.config import settings
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     pass
+
+
+def _storage_client():
+    """Return a GCS client scoped to the configured GCP project when available."""
+    from google.cloud import storage
+
+    return (
+        storage.Client(project=settings.gcp_project_id)
+        if settings.gcp_project_id
+        else storage.Client()
+    )
 
 
 def _maybe_download_gcs(path: str) -> str:
@@ -25,9 +38,7 @@ def _maybe_download_gcs(path: str) -> str:
     if not path.startswith("gs://"):
         return path
 
-    from google.cloud import storage
-
-    client = storage.Client()
+    client = _storage_client()
     bucket_name, blob_name = path[5:].split("/", 1)
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(blob_name)
@@ -146,9 +157,7 @@ def save_model(model: Pipeline, path: str = "rf_model.joblib"):
             local_path = tmp.name
 
         try:
-            from google.cloud import storage
-
-            client = storage.Client()
+            client = _storage_client()
             bucket_name, blob_name = path[5:].split("/", 1)
             bucket = client.bucket(bucket_name)
             blob = bucket.blob(blob_name)
