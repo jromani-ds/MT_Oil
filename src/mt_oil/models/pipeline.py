@@ -163,13 +163,17 @@ def save_model(model: Pipeline, path: str = "rf_model.joblib"):
 
 
 def load_model(path: str = "rf_model.joblib") -> Pipeline:
-    local_path = _maybe_download_gcs(path)
-    if not os.path.exists(local_path):
-        logger.warning("Model file not found: %s", path)
-        return None
     try:
-        return joblib.load(local_path)
-    finally:
-        # Clean up temp file if we downloaded from GCS.
-        if local_path != path and os.path.exists(local_path):
-            os.remove(local_path)
+        local_path = _maybe_download_gcs(path)
+        if not os.path.exists(local_path):
+            logger.warning("Model file not found: %s", path)
+            return None
+        try:
+            return joblib.load(local_path)
+        finally:
+            # Clean up temp file if we downloaded from GCS.
+            if local_path != path and os.path.exists(local_path):
+                os.remove(local_path)
+    except Exception as e:
+        logger.warning("Could not load model from %s: %s", path, e)
+        return None

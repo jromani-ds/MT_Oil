@@ -12,10 +12,7 @@ terraform {
     }
   }
 
-  backend "gcs" {
-    bucket = "my-project-1508887546225-tfstate"
-    prefix = "dev/terraform.tfstate"
-  }
+  backend "gcs" {}
 }
 
 provider "google" {
