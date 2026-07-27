@@ -162,9 +162,9 @@ export function Dashboard() {
     ];
 
     return (
-        <div className="flex h-screen bg-gray-100 flex-col">
+        <div className="flex h-dvh bg-gray-100 flex-col">
             <header className="bg-slate-800 text-white p-4 shadow-md flex items-center justify-between">
-                <h1 className="text-xl font-bold flex items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                     <Terminal className="w-6 h-6" /> MT Oil Analytics
                 </h1>
                 <div className="text-sm text-gray-400">
@@ -173,7 +173,7 @@ export function Dashboard() {
             </header>
 
             {/* Tab Navigation */}
-            <div className="bg-white border-b border-gray-200 px-6">
+            <div className="bg-white border-b border-gray-200 px-3 sm:px-6">
                 <div className="flex gap-1">
                     {tabs.map(tab => {
                         const Icon = tab.icon;
@@ -181,7 +181,7 @@ export function Dashboard() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === tab.id
+                                className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 font-medium transition-colors border-b-2 ${activeTab === tab.id
                                     ? 'border-blue-600 text-blue-600'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
@@ -207,7 +207,7 @@ export function Dashboard() {
                             </div>
                         )}
                         {/* Sidebar with Filters */}
-                        <div className="w-80 p-4 flex flex-col gap-4 overflow-y-auto border-r border-gray-200 bg-white">
+                        <div className="w-72 lg:w-80 p-4 flex flex-col gap-4 overflow-y-auto border-r border-gray-200 bg-white">
                             {/* Filters Card */}
                             <div className="bg-gray-50 rounded-lg shadow-sm p-4 border border-gray-200">
                                 <div
@@ -391,7 +391,7 @@ export function Dashboard() {
                                         <DollarSign className="w-8 h-8 text-green-600" /> Economics Analysis
                                     </h3>
 
-                                    <div className="grid grid-cols-2 gap-8 mb-8">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
                                         <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg">
                                             <p className="text-gray-600 text-sm uppercase tracking-wider font-semibold mb-2">NPV (10%)</p>
                                             <p className={`text-4xl font-mono font-bold ${economics.NPV >= 0 ? 'text-green-700' : 'text-red-700'}`}>
@@ -422,7 +422,7 @@ export function Dashboard() {
                                                 Recalculate
                                             </button>
                                         </h4>
-                                        <div className="grid grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                             <div className="flex flex-col">
                                                 <label className="text-sm text-gray-600 mb-2 font-medium">Oil Price ($/bbl)</label>
                                                 <input
