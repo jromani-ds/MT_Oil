@@ -1,12 +1,15 @@
 """Monthly well PDF ingestion job.
 
 This module is invoked as a Cloud Run Job to download well-report PDFs from the
-Montana DNRC DataMiner for every API number in BigQuery, and store them in GCS
-under the prefix wells/pdfs/{api_wellno}.pdf.
+Montana DNRC file server for every API number in BigQuery, and store them in GCS
+under wells/pdfs/{api_wellno}/{api_10_digit}.pdf.
 
-It is idempotent and incremental: each run skips wells whose PDF already exists
-in GCS with a Content-Length matching the remote resource, only re-downloading
-when the file size has changed.
+The PDF download URL follows a deterministic pattern:
+  https://bogfiles.dnrc.mt.gov/Well_Data/{api[:10]}/{api[:10]}.pdf
+
+The job is idempotent and incremental: it skips wells whose PDF already exists
+in GCS with a matching Content-Length, only re-downloading when sizes differ.
+Wells without a PDF on the DNRC server (404) are recorded as a no-file skip.
 """
 
 import shutil
@@ -22,11 +25,11 @@ from mt_oil.config import settings
 
 
 PDF_PREFIX = "wells/pdfs/"
-DNRC_BASE_URL = "https://bogapps.dnrc.mt.gov/dataminer/Wells/WellData.aspx"
+BOGFILES_BASE = "https://bogfiles.dnrc.mt.gov/Well_Data"
 REQUEST_TIMEOUT = 60
 DEFAULT_DELAY = 1.5
 LOG_INTERVAL = 100
-SKIP_EXTENSIONS = {".aspx", ".html", ".htm"}
+
 
 BROWSER_HEADERS = {
     "User-Agent": (
@@ -39,13 +42,12 @@ BROWSER_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
     "Accept-Encoding": "gzip, deflate, br",
     "Cache-Control": "no-cache",
-    "Referer": "https://bogapps.dnrc.mt.gov/",
+    "Referer": "https://bogfiles.dnrc.mt.gov/",
 }
 
 
 def _build_request(url: str, method: str = "GET") -> Request:
-    req = Request(url, method=method, headers=BROWSER_HEADERS)
-    return req
+    return Request(url, method=method, headers=BROWSER_HEADERS)
 
 
 def _get_bq_api_numbers() -> list[str]:
@@ -56,52 +58,77 @@ def _get_bq_api_numbers() -> list[str]:
     return [str(row.api_wellno) for row in rows]
 
 
-def _head_pdf_url(api_wellno: str) -> tuple[int | None, str | None]:
-    url = f"{DNRC_BASE_URL}?Name={api_wellno}"
+def _pdf_url(api_wellno: str) -> str | None:
+    """Build the direct PDF URL from the first 10 digits of the API number.
+
+    Returns None if the api_wellno is too short to extract 10 digits.
+    """
+    clean = api_wellno.strip()
+    api_10 = clean[:10]
+    if len(api_10) < 10:
+        return None
+    return f"{BOGFILES_BASE}/{api_10}/{api_10}.pdf"
+
+
+def _head_pdf(api_wellno: str) -> tuple[str | None, int | None]:
+    """HEAD the direct PDF URL to check for existence and size.
+
+    Returns (pdf_url, size_bytes).  If the well has no PDF (404) or the
+    api_wellno is invalid, returns (None, None).
+    """
+    url = _pdf_url(api_wellno)
+    if not url:
+        return None, None
+
     req = _build_request(url, method="HEAD")
     try:
         with urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
-            content_length = resp.headers.get("Content-Length")
-            content_type = resp.headers.get("Content-Type", "").lower()
-            return (
-                int(content_length) if content_length else None,
-                content_type or None,
-            )
-    except (HTTPError, URLError, OSError) as e:
+            cl = resp.headers.get("Content-Length")
+            return url, int(cl) if cl else None
+    except HTTPError as e:
+        if e.code == 404:
+            return None, None
+        print(f"  HEAD failed ({e.code}) for {api_wellno}: {url}")
+        return None, None
+    except (URLError, OSError) as e:
         print(f"  HEAD failed for {api_wellno}: {e}")
         return None, None
 
 
-def _download_pdf(api_wellno: str, dest: Path) -> bool:
-    url = f"{DNRC_BASE_URL}?Name={api_wellno}"
-    req = _build_request(url)
+def _download_pdf(pdf_url: str, dest: Path) -> bool:
+    """Download a PDF from the given bogfiles URL.
+
+    Returns True on success, False on failure (wrong content-type, empty body,
+    or network error).
+    """
+    req = _build_request(pdf_url)
     try:
         with urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
             ct = (resp.headers.get("Content-Type") or "").lower()
             if "application/pdf" not in ct:
-                print(f"  Skipping {api_wellno}: Content-Type={ct} (not PDF)")
+                print(f"  Skipping: Content-Type={ct} (not PDF)")
                 return False
             with open(dest, "wb") as f:
                 shutil.copyfileobj(resp, f)
             if dest.stat().st_size == 0:
-                print(f"  Skipping {api_wellno}: empty response body")
+                print("  Skipping: empty response body")
                 dest.unlink(missing_ok=True)
                 return False
             return True
     except (HTTPError, URLError, OSError) as e:
-        print(f"  Download failed for {api_wellno}: {e}")
+        print(f"  Download failed: {e}")
         return False
+
+
+def _gcs_blob_name(api_wellno: str) -> str:
+    clean = api_wellno.strip()[:10]
+    return f"{PDF_PREFIX}{api_wellno}/{clean}.pdf"
 
 
 def _gcs_blob(api_wellno: str):
     client = storage.Client(project=settings.gcp_project_id)
     bucket = client.bucket(settings.gcs_data_bucket)
-    return bucket.blob(f"{PDF_PREFIX}{api_wellno}.pdf")
-
-
-def _upload_pdf(api_wellno: str, local_path: Path) -> None:
-    blob = _gcs_blob(api_wellno)
-    blob.upload_from_filename(str(local_path))
+    return bucket.blob(_gcs_blob_name(api_wellno))
 
 
 def _gcs_pdf_size(api_wellno: str) -> int | None:
@@ -110,6 +137,11 @@ def _gcs_pdf_size(api_wellno: str) -> int | None:
         blob.reload()
         return blob.size
     return None
+
+
+def _upload_pdf(api_wellno: str, local_path: Path) -> None:
+    blob = _gcs_blob(api_wellno)
+    blob.upload_from_filename(str(local_path))
 
 
 def run(
@@ -140,6 +172,7 @@ def run(
 
     fetched = 0
     skipped = 0
+    no_file = 0
     errors = 0
     start_time = time.time()
 
@@ -149,19 +182,19 @@ def run(
                 elapsed = time.time() - start_time
                 print(
                     f"[{idx}/{len(api_numbers)}] "
-                    f"fetched={fetched} skipped={skipped} errors={errors} "
+                    f"fetched={fetched} skipped={skipped} "
+                    f"no_file={no_file} errors={errors} "
                     f"elapsed={elapsed:.0f}s"
                 )
 
-            gcs_size = _gcs_pdf_size(api)
+            pdf_url, remote_size = _head_pdf(api)
 
-            remote_size, content_type = _head_pdf_url(api)
-
-            if content_type and any(ext in content_type for ext in SKIP_EXTENSIONS):
-                print(f"  Skipping {api}: unexpected Content-Type={content_type}")
-                errors += 1
+            if pdf_url is None:
+                no_file += 1
                 time.sleep(delay)
                 continue
+
+            gcs_size = _gcs_pdf_size(api)
 
             if (
                 gcs_size is not None
@@ -176,7 +209,7 @@ def run(
                 tmp_path = Path(tmp.name)
 
             try:
-                ok = _download_pdf(api, tmp_path)
+                ok = _download_pdf(pdf_url, tmp_path)
                 if not ok:
                     errors += 1
                     continue
@@ -186,7 +219,7 @@ def run(
                 upload_size = tmp_path.stat().st_size
                 print(
                     f"  Fetched {api} ({upload_size:,} bytes) "
-                    f"-> gs://{settings.gcs_data_bucket}/{PDF_PREFIX}{api}.pdf"
+                    f"-> gs://{settings.gcs_data_bucket}/{_gcs_blob_name(api)}"
                 )
             finally:
                 if tmp_path.exists():
@@ -204,7 +237,8 @@ def run(
     print("Well PDF fetch job complete.")
     print(f"  Total wells: {len(api_numbers):,}")
     print(f"  Fetched:     {fetched:,}")
-    print(f"  Skipped:     {skipped:,}")
+    print(f"  Skipped:     {skipped:,} (same size, unchanged)")
+    print(f"  No file:     {no_file:,} (no PDF on DNRC)")
     print(f"  Errors:      {errors:,}")
     print(f"  Elapsed:     {elapsed:.0f}s ({elapsed/60:.1f}min)")
 
