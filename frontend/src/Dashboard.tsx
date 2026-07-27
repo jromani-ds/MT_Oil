@@ -162,7 +162,7 @@ export function Dashboard() {
     ];
 
     return (
-        <div className="flex h-dvh bg-gray-100 flex-col">
+        <div className="flex h-screen bg-gray-100 flex-col">
             <header className="bg-slate-800 text-white p-4 shadow-md flex items-center justify-between">
                 <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                     <Terminal className="w-6 h-6" /> MT Oil Analytics
