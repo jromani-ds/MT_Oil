@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [
     { name = "Joseph Romani", email = "joseph.romani@example.com" }
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.1.4",
     "seaborn>=0.13.0",
@@ -31,6 +31,7 @@ dependencies = [
 
 [project.scripts]
 fracfocus-update = "mt_oil.jobs.fracfocus_update:main"
+pdf-fetch = "mt_oil.jobs.pdf_fetch:main"
 
 [project.optional-dependencies]
 dev = [

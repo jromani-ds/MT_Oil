@@ -213,6 +213,50 @@ module "fracfocus_scheduler" {
   depends_on = [module.fracfocus_job]
 }
 
+module "pdf_fetch_job" {
+  source     = "../../modules/cloud_run_job"
+  project_id = var.project_id
+  region     = var.region
+
+  job_name              = "mt-oil-pdf-fetch-${local.env}"
+  image                 = var.api_image
+  service_account_email = google_service_account.runtime.email
+  memory                = "512Mi"
+  cpu                   = "1"
+  timeout_seconds       = 43200
+  max_retries           = 1
+
+  env_vars = {
+    ENVIRONMENT      = local.env
+    GCP_PROJECT_ID   = var.project_id
+    GCS_DATA_BUCKET  = module.gcs.bucket_name
+    BIGQUERY_DATASET = module.bigquery.dataset_id
+    JOB_NAME         = "pdf-fetch"
+  }
+
+  command = ["python"]
+  args    = ["-m", "mt_oil.jobs.pdf_fetch"]
+
+  labels = local.labels
+
+  depends_on = [module.gcs, module.bigquery]
+}
+
+module "pdf_fetch_scheduler" {
+  source     = "../../modules/cloud_scheduler"
+  project_id = var.project_id
+  region     = var.scheduler_region
+
+  enabled               = false
+  job_name              = "mt-oil-pdf-fetch-${local.env}-monthly"
+  schedule              = "0 5 3 * *"
+  time_zone             = "America/Denver"
+  cloud_run_job_name    = module.pdf_fetch_job.job_name
+  service_account_email = google_service_account.runtime.email
+
+  depends_on = [module.pdf_fetch_job]
+}
+
 module "monitoring" {
   source     = "../../modules/monitoring"
   project_id = var.project_id
