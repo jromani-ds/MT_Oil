@@ -92,15 +92,15 @@ def mock_settings():
 
 
 @pytest.fixture(autouse=True)
-def mock_progress(monkeypatch):
-    """Stub out BigQuery progress persistence by default."""
-    monkeypatch.setattr(
-        "mt_oil.jobs.pdf_fetch._load_progress", lambda _client, _exec: {}
-    )
-    monkeypatch.setattr(
-        "mt_oil.jobs.pdf_fetch._save_progress",
-        lambda *_args, **_kwargs: None,
-    )
+def mock_progress():
+    """Stub out BigQuery/GCS client creation and progress persistence by default."""
+    with (
+        patch("mt_oil.jobs.pdf_fetch._load_progress", return_value={}),
+        patch("mt_oil.jobs.pdf_fetch._save_progress"),
+        patch("mt_oil.jobs.pdf_fetch.bigquery.Client"),
+        patch("mt_oil.jobs.pdf_fetch.storage.Client"),
+    ):
+        yield
 
 
 @pytest.fixture
