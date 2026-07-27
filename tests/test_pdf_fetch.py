@@ -7,7 +7,9 @@ import pytest
 
 from mt_oil.jobs.pdf_fetch import (
     _get_bq_api_numbers,
-    _head_pdf_url,
+    _pdf_url,
+    _gcs_blob_name,
+    _head_pdf,
     _download_pdf,
     _gcs_pdf_size,
     _upload_pdf,
@@ -54,24 +56,6 @@ class FakeBlob:
         pass
 
 
-class FakeBucket:
-    def __init__(self):
-        self.blobs: dict[str, FakeBlob] = {}
-
-    def blob(self, name: str) -> FakeBlob:
-        if name not in self.blobs:
-            self.blobs[name] = FakeBlob(name)
-        return self.blobs[name]
-
-
-class FakeClient:
-    def __init__(self):
-        self.bucket = FakeBucket()
-
-    def bucket(self, name: str) -> FakeBucket:
-        return self.bucket
-
-
 class FakeQueryJob:
     def __init__(self, rows: list):
         self._rows = rows
@@ -114,220 +98,275 @@ def test_get_bq_api_numbers(mock_bq):
     assert result[-1] == "2500000000004"
 
 
-@patch("mt_oil.jobs.pdf_fetch.urlopen")
-def test_head_pdf_url_success(mock_urlopen):
-    headers = {"Content-Length": "12345", "Content-Type": "application/pdf"}
-    mock_urlopen.return_value.__enter__.return_value.headers = headers
-    mock_urlopen.return_value.__enter__.return_value.status = 200
+class TestPdfUrl:
+    def test_full_14_digit(self):
+        assert _pdf_url("25091212570000") == (
+            "https://bogfiles.dnrc.mt.gov/Well_Data/2509121257/2509121257.pdf"
+        )
 
-    size, ctype = _head_pdf_url("2500000000000")
-    assert size == 12345
-    assert ctype == "application/pdf"
+    def test_pads_to_14(self):
+        assert _pdf_url("2509121257") == (
+            "https://bogfiles.dnrc.mt.gov/Well_Data/2509121257/2509121257.pdf"
+        )
 
+    def test_does_not_include_event_code(self):
+        url = _pdf_url("25091212570000")
+        assert "2509121257" in url
+        assert "25091212570000" not in url
 
-@patch("mt_oil.jobs.pdf_fetch.urlopen")
-def test_head_pdf_url_no_content_length(mock_urlopen):
-    headers = {"Content-Type": "application/pdf"}
-    mock_urlopen.return_value.__enter__.return_value.headers = headers
-
-    size, ctype = _head_pdf_url("2500000000000")
-    assert size is None
-    assert ctype == "application/pdf"
-
-
-@patch("mt_oil.jobs.pdf_fetch.urlopen")
-def test_head_pdf_url_http_error(mock_urlopen):
-    from urllib.error import HTTPError
-
-    mock_urlopen.side_effect = HTTPError(
-        "http://example.com", 404, "Not Found", {}, None
-    )
-    size, ctype = _head_pdf_url("2500000000000")
-    assert size is None
-    assert ctype is None
+    def test_returns_none_for_short_string(self):
+        assert _pdf_url("123") is None
 
 
-@patch("mt_oil.jobs.pdf_fetch.urlopen")
-def test_download_pdf_success(mock_urlopen, tmp_path):
-    pdf_data = b"%PDF-1.4 fake pdf content"
-    headers = {"Content-Type": "application/pdf"}
-    fake_resp = FakeResponse(pdf_data, headers)
-    mock_urlopen.return_value = fake_resp
+class TestGcsBlobName:
+    def test_uses_first_10_digits_in_filename(self):
+        assert _gcs_blob_name("25091212570000") == (
+            "wells/pdfs/25091212570000/2509121257.pdf"
+        )
 
-    dest = tmp_path / "test.pdf"
-    result = _download_pdf("2500000000000", dest)
-    assert result is True
-    assert dest.read_bytes() == pdf_data
+    def test_pads_short_api(self):
+        assert _gcs_blob_name("2509121257") == ("wells/pdfs/2509121257/2509121257.pdf")
 
 
-@patch("mt_oil.jobs.pdf_fetch.urlopen")
-def test_download_pdf_wrong_content_type(mock_urlopen, tmp_path):
-    html_data = b"<html>not a pdf</html>"
-    headers = {"Content-Type": "text/html"}
-    fake_resp = FakeResponse(html_data, headers)
-    mock_urlopen.return_value = fake_resp
+class TestHeadPdf:
+    def test_well_with_pdf(self):
+        with patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen:
+            headers = {"Content-Length": "48539067", "Content-Type": "application/pdf"}
+            mock_urlopen.return_value.__enter__.return_value.headers = headers
+            mock_urlopen.return_value.__enter__.return_value.status = 200
 
-    dest = tmp_path / "test.pdf"
-    result = _download_pdf("2500000000000", dest)
-    assert result is False
-    assert not dest.exists()
+            url, size = _head_pdf("25091212570000")
+            assert url == (
+                "https://bogfiles.dnrc.mt.gov/Well_Data/2509121257/2509121257.pdf"
+            )
+            assert size == 48539067
 
+    def test_well_without_pdf(self):
+        from urllib.error import HTTPError
 
-@patch("mt_oil.jobs.pdf_fetch.urlopen")
-def test_download_pdf_empty_body(mock_urlopen, tmp_path):
-    headers = {"Content-Type": "application/pdf"}
-    fake_resp = FakeResponse(b"", headers)
-    mock_urlopen.return_value = fake_resp
+        with patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = HTTPError(
+                "http://example.com", 404, "Not Found", {}, None
+            )
+            url, size = _head_pdf("25091212570000")
+            assert url is None
+            assert size is None
 
-    dest = tmp_path / "test.pdf"
-    result = _download_pdf("2500000000000", dest)
-    assert result is False
-    assert not dest.exists()
+    def test_network_error(self):
+        from urllib.error import URLError
 
+        with patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = URLError("timeout")
+            url, size = _head_pdf("25091212570000")
+            assert url is None
+            assert size is None
 
-@patch("mt_oil.jobs.pdf_fetch.storage.Client")
-def test_gcs_pdf_size_exists(mock_storage_cls):
-    instance = MagicMock()
-    bucket = FakeBucket()
-    bucket.blobs["wells/pdfs/2500000000000.pdf"] = FakeBlob(
-        "wells/pdfs/2500000000000.pdf", exists=True, size=54321
-    )
-    instance.bucket.return_value = bucket
-    mock_storage_cls.return_value = instance
+    def test_invalid_api_number(self):
+        url, size = _head_pdf("123")
+        assert url is None
+        assert size is None
 
-    size = _gcs_pdf_size("2500000000000")
-    assert size == 54321
+    def test_no_content_length_header(self):
+        with patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen:
+            headers = {"Content-Type": "application/pdf"}
+            mock_urlopen.return_value.__enter__.return_value.headers = headers
 
-
-@patch("mt_oil.jobs.pdf_fetch.storage.Client")
-def test_gcs_pdf_size_not_exists(mock_storage_cls):
-    instance = MagicMock()
-    bucket = FakeBucket()
-    instance.bucket.return_value = bucket
-    mock_storage_cls.return_value = instance
-
-    size = _gcs_pdf_size("2500000000000")
-    assert size is None
+            url, size = _head_pdf("25091212570000")
+            assert url is not None
+            assert size is None
 
 
-@patch("mt_oil.jobs.pdf_fetch.storage.Client")
-def test_upload_pdf(mock_storage_cls, tmp_path):
-    instance = MagicMock()
-    bucket = FakeBucket()
-    instance.bucket.return_value = bucket
-    mock_storage_cls.return_value = instance
+class TestDownloadPdf:
+    def test_success(self, tmp_path):
+        pdf_data = b"%PDF-1.4 fake pdf content"
+        with patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen:
+            fake_resp = FakeResponse(pdf_data, {"Content-Type": "application/pdf"})
+            mock_urlopen.return_value = fake_resp
 
-    pdf = tmp_path / "test.pdf"
-    pdf.write_bytes(b"%PDF-1.4 fake content")
+            dest = tmp_path / "test.pdf"
+            pdf_url = "https://bogfiles.dnrc.mt.gov/Well_Data/2509121257/2509121257.pdf"
+            result = _download_pdf(pdf_url, dest)
+            assert result is True
+            assert dest.read_bytes() == pdf_data
 
-    _upload_pdf("2500000000000", pdf)
+    def test_wrong_content_type(self, tmp_path):
+        with patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen:
+            html_data = b"<html>not a pdf</html>"
+            fake_resp = FakeResponse(html_data, {"Content-Type": "text/html"})
+            mock_urlopen.return_value = fake_resp
 
+            dest = tmp_path / "test.pdf"
+            pdf_url = "https://bogfiles.dnrc.mt.gov/Well_Data/2509121257/2509121257.pdf"
+            result = _download_pdf(pdf_url, dest)
+            assert result is False
+            assert not dest.exists()
 
-@patch("mt_oil.jobs.pdf_fetch.storage.Client")
-@patch("mt_oil.jobs.pdf_fetch.urlopen")
-@patch("mt_oil.jobs.pdf_fetch._get_bq_api_numbers")
-def test_run_skips_when_same_size(
-    mock_bq, mock_urlopen, mock_storage_cls, mock_settings
-):
-    mock_bq.return_value = ["2500000000000", "2500000000001"]
+    def test_empty_body(self, tmp_path):
+        with patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen:
+            fake_resp = FakeResponse(b"", {"Content-Type": "application/pdf"})
+            mock_urlopen.return_value = fake_resp
 
-    headers = {"Content-Length": "100", "Content-Type": "application/pdf"}
+            dest = tmp_path / "test.pdf"
+            pdf_url = "https://bogfiles.dnrc.mt.gov/Well_Data/2509121257/2509121257.pdf"
+            result = _download_pdf(pdf_url, dest)
+            assert result is False
+            assert not dest.exists()
 
-    def urlopen_side_effect(req, **kwargs):
-        resp = MagicMock()
-        resp.headers = headers
-        resp.status = 200
-        resp.__enter__.return_value = resp
-        return resp
+    def test_network_error(self, tmp_path):
+        from urllib.error import URLError
 
-    mock_urlopen.side_effect = urlopen_side_effect
+        with patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen:
+            mock_urlopen.side_effect = URLError("timeout")
 
-    instance = MagicMock()
-    blob = FakeBlob("wells/pdfs/2500000000000.pdf", exists=True, size=100)
-    blob2 = FakeBlob("wells/pdfs/2500000000001.pdf", exists=True, size=100)
-
-    def blob_side_effect(name):
-        if "2500000000000" in name:
-            return blob
-        return blob2
-
-    bucket = MagicMock()
-    bucket.blob.side_effect = blob_side_effect
-    instance.bucket.return_value = bucket
-    mock_storage_cls.return_value = instance
-
-    result = run(delay=0.01, max_wells=2)
-    assert result is None
+            dest = tmp_path / "test.pdf"
+            pdf_url = "https://bogfiles.dnrc.mt.gov/Well_Data/2509121257/2509121257.pdf"
+            result = _download_pdf(pdf_url, dest)
+            assert result is False
 
 
-@patch("mt_oil.jobs.pdf_fetch.storage.Client")
-@patch("mt_oil.jobs.pdf_fetch.urlopen")
-@patch("mt_oil.jobs.pdf_fetch._get_bq_api_numbers")
-def test_run_fetches_when_size_differs(
-    mock_bq, mock_urlopen, mock_storage_cls, mock_settings, tmp_path
-):
-    mock_bq.return_value = ["2500000000000"]
+class TestGcsOperations:
+    def test_size_exists(self):
+        with patch("mt_oil.jobs.pdf_fetch.storage.Client") as mock_cls:
+            instance = MagicMock()
+            blob = FakeBlob(
+                "wells/pdfs/25091212570000/2509121257.pdf", exists=True, size=54321
+            )
 
-    def urlopen_side_effect(req, **kwargs):
-        if req.method == "HEAD":
-            resp = MagicMock()
-            resp.headers = {"Content-Length": "200", "Content-Type": "application/pdf"}
-            resp.status = 200
-            resp.__enter__.return_value = resp
-            return resp
-        pdf_data = b"%PDF-1.4 updated content"
-        fake_resp = FakeResponse(pdf_data, {"Content-Type": "application/pdf"})
-        return fake_resp
+            def blob_side(name):
+                return blob
 
-    mock_urlopen.side_effect = urlopen_side_effect
+            instance.bucket.return_value.blob = blob_side
+            mock_cls.return_value = instance
 
-    instance = MagicMock()
-    blob = FakeBlob("wells/pdfs/2500000000000.pdf", exists=True, size=100)
-    bucket = MagicMock()
-    bucket.blob.return_value = blob
-    instance.bucket.return_value = bucket
-    mock_storage_cls.return_value = instance
+            size = _gcs_pdf_size("25091212570000")
+            assert size == 54321
 
-    with patch("mt_oil.jobs.pdf_fetch.tempfile.NamedTemporaryFile") as mock_tmp:
-        mock_tmp.return_value.__enter__.return_value.name = str(tmp_path / "tmp.pdf")
-        result = run(delay=0.01, max_wells=1)
-    assert result is None
+    def test_size_not_exists(self):
+        with patch("mt_oil.jobs.pdf_fetch.storage.Client") as mock_cls:
+            instance = MagicMock()
+            blob = FakeBlob("wells/pdfs/25091212570000/2509121257.pdf", exists=False)
 
+            def blob_side(name):
+                return blob
 
-@patch("mt_oil.jobs.pdf_fetch.storage.Client")
-@patch("mt_oil.jobs.pdf_fetch.urlopen")
-@patch("mt_oil.jobs.pdf_fetch._get_bq_api_numbers")
-def test_run_handles_non_pdf_content_type(
-    mock_bq, mock_urlopen, mock_storage_cls, mock_settings
-):
-    mock_bq.return_value = ["2500000000000"]
+            instance.bucket.return_value.blob = blob_side
+            mock_cls.return_value = instance
 
-    headers = {"Content-Length": "500", "Content-Type": "text/html"}
-    resp = MagicMock()
-    resp.headers = headers
-    resp.status = 200
-    resp.__enter__.return_value = resp
-    mock_urlopen.return_value = resp
+            size = _gcs_pdf_size("25091212570000")
+            assert size is None
 
-    instance = MagicMock()
-    blob = FakeBlob("wells/pdfs/2500000000000.pdf", exists=False)
-    bucket = MagicMock()
-    bucket.blob.return_value = blob
-    instance.bucket.return_value = bucket
-    mock_storage_cls.return_value = instance
+    def test_upload(self, tmp_path):
+        with patch("mt_oil.jobs.pdf_fetch.storage.Client") as mock_cls:
+            instance = MagicMock()
+            blob = FakeBlob("wells/pdfs/25091212570000/2509121257.pdf")
+            instance.bucket.return_value.blob.return_value = blob
+            mock_cls.return_value = instance
 
-    result = run(delay=0.01, max_wells=1)
-    assert result is None
+            pdf = tmp_path / "test.pdf"
+            pdf.write_bytes(b"%PDF fake content")
+            _upload_pdf("25091212570000", pdf)
 
 
-@patch("mt_oil.jobs.pdf_fetch.storage.Client")
-@patch("mt_oil.jobs.pdf_fetch.urlopen")
-@patch("mt_oil.jobs.pdf_fetch._get_bq_api_numbers")
-def test_run_with_no_bucket_raises(
-    mock_bq, mock_urlopen, mock_storage_cls, mock_settings
-):
-    mock_settings.gcs_data_bucket = ""
-    mock_bq.return_value = ["2500000000000"]
+class TestRun:
+    def test_no_bucket_raises(self, mock_settings):
+        mock_settings.gcs_data_bucket = ""
+        with pytest.raises(EnvironmentError, match="GCS_DATA_BUCKET"):
+            run(delay=0.01, max_wells=1)
 
-    with pytest.raises(EnvironmentError, match="GCS_DATA_BUCKET"):
-        run(delay=0.01, max_wells=1)
+    def test_skips_when_same_size(self):
+        with (
+            patch("mt_oil.jobs.pdf_fetch._get_bq_api_numbers") as mock_bq,
+            patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen,
+            patch("mt_oil.jobs.pdf_fetch.storage.Client") as mock_storage,
+        ):
+            mock_bq.return_value = ["25091212570000"]
+
+            urlopen_side = MagicMock()
+            urlopen_side.__enter__.return_value.headers = {
+                "Content-Length": "48539067",
+                "Content-Type": "application/pdf",
+            }
+            urlopen_side.__enter__.return_value.status = 200
+            mock_urlopen.return_value = urlopen_side
+
+            storage_instance = MagicMock()
+            blob = FakeBlob(
+                "wells/pdfs/25091212570000/2509121257.pdf",
+                exists=True,
+                size=48539067,
+            )
+            storage_instance.bucket.return_value.blob.return_value = blob
+            mock_storage.return_value = storage_instance
+
+            result = run(delay=0.01, max_wells=1)
+            assert result is None
+
+    def test_fetches_when_size_differs(self, tmp_path):
+        with (
+            patch("mt_oil.jobs.pdf_fetch._get_bq_api_numbers") as mock_bq,
+            patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen,
+            patch("mt_oil.jobs.pdf_fetch.storage.Client") as mock_storage,
+            patch("mt_oil.jobs.pdf_fetch.tempfile.NamedTemporaryFile") as mock_tmp,
+        ):
+            mock_bq.return_value = ["25091212570000"]
+
+            mock_tmp.return_value.__enter__.return_value.name = str(
+                tmp_path / "tmp.pdf"
+            )
+
+            head_headers = {
+                "Content-Length": "50000000",
+                "Content-Type": "application/pdf",
+            }
+
+            def urlopen_side_effect(req, **kwargs):
+                if req.method == "HEAD":
+                    resp = MagicMock()
+                    resp.headers = head_headers
+                    resp.status = 200
+                    resp.__enter__.return_value = resp
+                    return resp
+                fake_resp = FakeResponse(
+                    b"%PDF-1.4 updated content",
+                    {"Content-Type": "application/pdf"},
+                )
+                return fake_resp
+
+            mock_urlopen.side_effect = urlopen_side_effect
+
+            storage_instance = MagicMock()
+            blob = FakeBlob(
+                "wells/pdfs/25091212570000/2509121257.pdf",
+                exists=True,
+                size=48539067,
+            )
+            storage_instance.bucket.return_value.blob.return_value = blob
+            mock_storage.return_value = storage_instance
+
+            result = run(delay=0.01, max_wells=1)
+            assert result is None
+
+    def test_no_pdf_on_server(self):
+        from urllib.error import HTTPError
+
+        with (
+            patch("mt_oil.jobs.pdf_fetch._get_bq_api_numbers") as mock_bq,
+            patch("mt_oil.jobs.pdf_fetch.urlopen") as mock_urlopen,
+            patch("mt_oil.jobs.pdf_fetch.storage.Client") as mock_storage,
+        ):
+            mock_bq.return_value = ["25047208580000"]
+
+            mock_urlopen.side_effect = HTTPError(
+                "http://example.com", 404, "Not Found", {}, None
+            )
+
+            storage_instance = MagicMock()
+            blob = FakeBlob(
+                "wells/pdfs/25047208580000/2504720858.pdf",
+                exists=False,
+            )
+            storage_instance.bucket.return_value.blob.return_value = blob
+            mock_storage.return_value = storage_instance
+
+            result = run(delay=0.01, max_wells=1)
+            assert result is None
