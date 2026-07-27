@@ -118,3 +118,26 @@ resource "google_bigquery_table" "analysis_outputs" {
     ignore_changes = [schema]
   }
 }
+
+resource "google_bigquery_table" "pdf_fetch_status" {
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "pdf_fetch_status"
+  project             = var.project_id
+  deletion_protection = false
+
+  clustering = ["execution_id", "api_wellno"]
+
+  schema = jsonencode([
+    { name = "api_wellno", type = "STRING", mode = "REQUIRED" },
+    { name = "execution_id", type = "STRING", mode = "REQUIRED" },
+    { name = "status", type = "STRING", mode = "REQUIRED" },
+    { name = "size_bytes", type = "INT64", mode = "NULLABLE" },
+    { name = "updated_at", type = "TIMESTAMP", mode = "REQUIRED" },
+    { name = "attempts", type = "INT64", mode = "NULLABLE" },
+    { name = "error_message", type = "STRING", mode = "NULLABLE" },
+  ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
+}

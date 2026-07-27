@@ -225,14 +225,17 @@ module "pdf_fetch_job" {
   memory                = "512Mi"
   cpu                   = "1"
   timeout_seconds       = 43200
-  max_retries           = 1
+  max_retries           = 2
 
   env_vars = {
-    ENVIRONMENT      = local.env
-    GCP_PROJECT_ID   = var.project_id
-    GCS_DATA_BUCKET  = module.gcs.bucket_name
-    BIGQUERY_DATASET = module.bigquery.dataset_id
-    JOB_NAME         = "pdf-fetch"
+    ENVIRONMENT            = local.env
+    GCP_PROJECT_ID         = var.project_id
+    GCS_DATA_BUCKET        = module.gcs.bucket_name
+    BIGQUERY_DATASET       = module.bigquery.dataset_id
+    JOB_NAME               = "pdf-fetch"
+    PDF_FETCH_STATUS_TABLE = "pdf_fetch_status"
+    PDF_FETCH_MAX_WORKERS  = "5"
+    PDF_FETCH_MAX_ATTEMPTS = "3"
   }
 
   command = ["python"]

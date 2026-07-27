@@ -13,6 +13,8 @@ from mt_oil.jobs.pdf_fetch import (
     _download_pdf,
     _gcs_pdf_size,
     _upload_pdf,
+    _load_progress,
+    _process_well,
     run,
 )
 
@@ -72,6 +74,14 @@ class FakeRow:
         self.api_wellno = api_wellno
 
 
+class FakeProgressRow:
+    def __init__(self, api_wellno: str, status: str, size_bytes=None, attempts=None):
+        self.api_wellno = api_wellno
+        self.status = status
+        self.size_bytes = size_bytes
+        self.attempts = attempts
+
+
 @pytest.fixture(autouse=True)
 def mock_settings():
     with patch("mt_oil.jobs.pdf_fetch.settings") as mock:
@@ -79,6 +89,18 @@ def mock_settings():
         mock.bigquery_dataset = "test_dataset"
         mock.gcs_data_bucket = "test-bucket"
         yield mock
+
+
+@pytest.fixture(autouse=True)
+def mock_progress():
+    """Stub out BigQuery/GCS client creation and progress persistence by default."""
+    with (
+        patch("mt_oil.jobs.pdf_fetch._load_progress", return_value={}),
+        patch("mt_oil.jobs.pdf_fetch._save_progress"),
+        patch("mt_oil.jobs.pdf_fetch.bigquery.Client"),
+        patch("mt_oil.jobs.pdf_fetch.storage.Client"),
+    ):
+        yield
 
 
 @pytest.fixture
@@ -271,7 +293,7 @@ class TestRun:
     def test_no_bucket_raises(self, mock_settings):
         mock_settings.gcs_data_bucket = ""
         with pytest.raises(EnvironmentError, match="GCS_DATA_BUCKET"):
-            run(delay=0.01, max_wells=1)
+            run(delay=0.01, max_wells=1, max_workers=1)
 
     def test_skips_when_same_size(self):
         with (
@@ -298,7 +320,7 @@ class TestRun:
             storage_instance.bucket.return_value.blob.return_value = blob
             mock_storage.return_value = storage_instance
 
-            result = run(delay=0.01, max_wells=1)
+            result = run(delay=0.01, max_wells=1, max_workers=1)
             assert result is None
 
     def test_fetches_when_size_differs(self, tmp_path):
@@ -343,7 +365,7 @@ class TestRun:
             storage_instance.bucket.return_value.blob.return_value = blob
             mock_storage.return_value = storage_instance
 
-            result = run(delay=0.01, max_wells=1)
+            result = run(delay=0.01, max_wells=1, max_workers=1)
             assert result is None
 
     def test_no_pdf_on_server(self):
@@ -368,5 +390,128 @@ class TestRun:
             storage_instance.bucket.return_value.blob.return_value = blob
             mock_storage.return_value = storage_instance
 
-            result = run(delay=0.01, max_wells=1)
+            result = run(delay=0.01, max_wells=1, max_workers=1)
             assert result is None
+
+
+class TestLoadProgress:
+    def test_loads_progress_for_execution(self):
+        fake_rows = [
+            FakeProgressRow("25091212570000", "fetched", size_bytes=1234, attempts=1),
+            FakeProgressRow("25047208580000", "no_file", attempts=1),
+        ]
+        with patch("mt_oil.jobs.pdf_fetch.bigquery.Client") as mock_cls:
+            bq_client = MagicMock()
+            bq_client.query.return_value.result.return_value = fake_rows
+            mock_cls.return_value = bq_client
+
+            progress = _load_progress(bq_client, "exec-123")
+            assert len(progress) == 2
+            assert progress["25091212570000"]["status"] == "fetched"
+            assert progress["25091212570000"]["attempts"] == 1
+            assert progress["25047208580000"]["status"] == "no_file"
+
+
+class TestProcessWellResume:
+    def test_skips_already_fetched_well(self):
+        with (
+            patch("mt_oil.jobs.pdf_fetch._head_pdf") as mock_head,
+            patch("mt_oil.jobs.pdf_fetch._gcs_pdf_size") as mock_size,
+            patch("mt_oil.jobs.pdf_fetch._download_pdf") as mock_download,
+            patch("mt_oil.jobs.pdf_fetch._upload_pdf") as mock_upload,
+            patch("mt_oil.jobs.pdf_fetch._save_progress") as mock_save,
+        ):
+            progress = {"25091212570000": {"status": "fetched", "size_bytes": 1234}}
+            counters = MagicMock()
+            lock = MagicMock()
+            bq_client = MagicMock()
+            storage_client = MagicMock()
+
+            _process_well(
+                "25091212570000",
+                progress,
+                "exec-123",
+                bq_client,
+                storage_client,
+                counters,
+                lock,
+                0.01,
+                3,
+            )
+
+            mock_head.assert_not_called()
+            mock_size.assert_not_called()
+            mock_download.assert_not_called()
+            mock_upload.assert_not_called()
+            counters.inc.assert_called_once_with(already_done=1)
+            mock_save.assert_not_called()
+
+    def test_retries_error_until_max_attempts(self):
+        with (
+            patch("mt_oil.jobs.pdf_fetch._head_pdf") as mock_head,
+            patch("mt_oil.jobs.pdf_fetch._gcs_pdf_size") as mock_size,
+            patch("mt_oil.jobs.pdf_fetch._download_pdf") as mock_download,
+            patch("mt_oil.jobs.pdf_fetch._upload_pdf"),
+            patch("mt_oil.jobs.pdf_fetch._save_progress") as mock_save,
+        ):
+            progress = {
+                "25091212570000": {"status": "error", "size_bytes": None, "attempts": 2}
+            }
+            mock_head.return_value = ("https://example.com/x.pdf", 100)
+            mock_size.return_value = 999  # different, forces download attempt
+            mock_download.return_value = False
+
+            counters = MagicMock()
+            lock = MagicMock()
+            bq_client = MagicMock()
+            storage_client = MagicMock()
+
+            _process_well(
+                "25091212570000",
+                progress,
+                "exec-123",
+                bq_client,
+                storage_client,
+                counters,
+                lock,
+                0.01,
+                3,
+            )
+
+            mock_head.assert_called_once()
+            mock_save.assert_called_once()
+            status = mock_save.call_args.args[4]
+            attempts = mock_save.call_args.args[6]
+            assert status == "error"
+            assert attempts == 3
+            counters.inc.assert_called_with(errors=1)
+
+    def test_skips_error_after_max_attempts(self):
+        with (
+            patch("mt_oil.jobs.pdf_fetch._head_pdf") as mock_head,
+            patch("mt_oil.jobs.pdf_fetch._save_progress") as mock_save,
+        ):
+            progress = {
+                "25091212570000": {"status": "error", "size_bytes": None, "attempts": 3}
+            }
+
+            counters = MagicMock()
+            lock = MagicMock()
+            bq_client = MagicMock()
+            storage_client = MagicMock()
+
+            _process_well(
+                "25091212570000",
+                progress,
+                "exec-123",
+                bq_client,
+                storage_client,
+                counters,
+                lock,
+                0.01,
+                3,
+            )
+
+            mock_head.assert_not_called()
+            mock_save.assert_not_called()
+            counters.inc.assert_called_once_with(already_done=1)
