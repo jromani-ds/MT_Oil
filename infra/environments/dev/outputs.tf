@@ -32,3 +32,8 @@ output "fracfocus_job_name" {
   description = "Cloud Run Job name for FracFocus updates"
   value       = module.fracfocus_job.job_name
 }
+
+output "pdf_fetch_job_name" {
+  description = "Cloud Run Job name for well PDF ingestion"
+  value       = module.pdf_fetch_job.job_name
+}
