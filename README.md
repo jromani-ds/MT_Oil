@@ -9,6 +9,11 @@
 
 A professional full-stack application for Oil & Gas data analysis, featuring advanced Decline Curve Analysis (DCA), economic modeling (NPV, ROI), and an interactive geospatial dashboard.
 
+**Try it live:**
+
+- Dev: https://mt-oil-mt-oil-dashboard-dev.storage.googleapis.com/index.html
+- Prod: https://mt-oil-mt-oil-dashboard.storage.googleapis.com/index.html
+
 ## Overview
 
 | Item                             | Status                  |
