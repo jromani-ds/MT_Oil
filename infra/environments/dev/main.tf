@@ -235,8 +235,8 @@ module "pdf_fetch_job" {
   job_name              = "mt-oil-pdf-fetch-${local.env}"
   image                 = var.api_image
   service_account_email = google_service_account.runtime.email
-  memory                = "512Mi"
-  cpu                   = "1"
+  memory                = "2Gi"
+  cpu                   = "2"
   timeout_seconds       = 43200
   max_retries           = 2
 
