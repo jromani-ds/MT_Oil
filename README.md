@@ -1,6 +1,18 @@
 # MT Oil Analytics Platform
 
+[![License](https://img.shields.io/github/license/jromani-ds/MT_Oil)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/jromani-ds/MT_Oil/ci.yml?branch=dev&label=CI)](https://github.com/jromani-ds/MT_Oil/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-blue?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev/)
+[![GCP](https://img.shields.io/badge/GCP-Cloud_Run-blue?logo=google-cloud)](https://cloud.google.com/)
+
 A professional full-stack application for Oil & Gas data analysis, featuring advanced Decline Curve Analysis (DCA), economic modeling (NPV, ROI), and an interactive geospatial dashboard.
+
+**Try it live:**
+
+- Dev: https://mt-oil-mt-oil-dashboard-dev.storage.googleapis.com/index.html
+- Prod: https://mt-oil-mt-oil-dashboard.storage.googleapis.com/index.html
 
 ## Overview
 
