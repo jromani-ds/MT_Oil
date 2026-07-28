@@ -32,6 +32,8 @@ locals {
     project     = "mt-oil"
     managed_by  = "terraform"
   }
+  # App Engine location must match the scheduler region (e.g. us-central1 -> us-central).
+  app_engine_location = var.scheduler_region == "us-central1" ? "us-central" : var.scheduler_region
 }
 
 # Service account used by Cloud Run API and Cloud Run Jobs at runtime.
@@ -199,19 +201,30 @@ module "fracfocus_job" {
   depends_on = [module.gcs, module.bigquery]
 }
 
+# Cloud Scheduler requires exactly one App Engine app per project.
+# We manage it here once and have each scheduler depend on it.
+resource "google_app_engine_application" "app_engine" {
+  project       = var.project_id
+  location_id   = local.app_engine_location
+  database_type = "CLOUD_FIRESTORE"
+}
+
 module "fracfocus_scheduler" {
   source     = "../../modules/cloud_scheduler"
   project_id = var.project_id
   region     = var.scheduler_region
 
-  enabled               = false
+  enabled               = true
   job_name              = "mt-oil-fracfocus-${local.env}-monthly"
   schedule              = "0 2 1 * *"
   time_zone             = "America/Denver"
   cloud_run_job_name    = module.fracfocus_job.job_name
   service_account_email = google_service_account.runtime.email
 
-  depends_on = [module.fracfocus_job]
+  depends_on = [
+    module.fracfocus_job,
+    google_app_engine_application.app_engine,
+  ]
 }
 
 module "pdf_fetch_job" {
@@ -222,17 +235,20 @@ module "pdf_fetch_job" {
   job_name              = "mt-oil-pdf-fetch-${local.env}"
   image                 = var.api_image
   service_account_email = google_service_account.runtime.email
-  memory                = "512Mi"
-  cpu                   = "1"
+  memory                = "2Gi"
+  cpu                   = "2"
   timeout_seconds       = 43200
-  max_retries           = 1
+  max_retries           = 2
 
   env_vars = {
-    ENVIRONMENT      = local.env
-    GCP_PROJECT_ID   = var.project_id
-    GCS_DATA_BUCKET  = module.gcs.bucket_name
-    BIGQUERY_DATASET = module.bigquery.dataset_id
-    JOB_NAME         = "pdf-fetch"
+    ENVIRONMENT            = local.env
+    GCP_PROJECT_ID         = var.project_id
+    GCS_DATA_BUCKET        = module.gcs.bucket_name
+    BIGQUERY_DATASET       = module.bigquery.dataset_id
+    JOB_NAME               = "pdf-fetch"
+    PDF_FETCH_STATUS_TABLE = "pdf_fetch_status"
+    PDF_FETCH_MAX_WORKERS  = "5"
+    PDF_FETCH_MAX_ATTEMPTS = "3"
   }
 
   command = ["python"]
@@ -248,12 +264,15 @@ module "pdf_fetch_scheduler" {
   project_id = var.project_id
   region     = var.scheduler_region
 
-  enabled               = false
+  enabled               = true
   job_name              = "mt-oil-pdf-fetch-${local.env}-monthly"
   schedule              = "0 5 3 * *"
   time_zone             = "America/Denver"
   cloud_run_job_name    = module.pdf_fetch_job.job_name
   service_account_email = google_service_account.runtime.email
 
-  depends_on = [module.pdf_fetch_job]
+  depends_on = [
+    module.pdf_fetch_job,
+    google_app_engine_application.app_engine,
+  ]
 }
