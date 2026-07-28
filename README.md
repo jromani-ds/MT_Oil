@@ -4,15 +4,15 @@ A professional full-stack application for Oil & Gas data analysis, featuring adv
 
 ## Overview
 
-| Item                             | Status                                              |
-| -------------------------------- | --------------------------------------------------- |
-| FastAPI backend                  | Live                                                |
-| React + Vite + Tailwind frontend | Live                                                |
-| GCP dev + prod deployments       | Live                                                |
-| BigQuery data warehouse          | Seeded                                              |
-| GCS static frontend hosting      | Live                                                |
-| Public API rate limiting         | Enabled                                             |
-| Cloud Scheduler                  | Disabled (blocked by GCP App Engine internal error) |
+| Item                             | Status                  |
+| -------------------------------- | ----------------------- |
+| FastAPI backend                  | Live                    |
+| React + Vite + Tailwind frontend | Live                    |
+| GCP dev + prod deployments       | Live                    |
+| BigQuery data warehouse          | Seeded                  |
+| GCS static frontend hosting      | Live                    |
+| Public API rate limiting         | Enabled                 |
+| Cloud Scheduler                  | Enabled in dev and prod |
 
 ## Architecture
 
@@ -127,7 +127,7 @@ Direct pushes to `dev` and `main` are blocked by branch protection.
 
 ### FracFocus Updates
 
-Cloud Scheduler is currently disabled due to a GCP App Engine provisioning issue. Trigger FracFocus updates manually:
+Cloud Scheduler is enabled and triggers the FracFocus and PDF fetch jobs monthly. For ad-hoc runs, trigger manually:
 
 ```bash
 gcloud run jobs execute mt-oil-fracfocus-dev --region=us-central1 --project=<GCP_PROJECT_ID>
