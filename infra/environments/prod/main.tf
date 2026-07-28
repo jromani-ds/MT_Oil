@@ -203,7 +203,7 @@ module "fracfocus_scheduler" {
   project_id = var.project_id
   region     = var.scheduler_region
 
-  enabled               = false
+  enabled               = true
   job_name              = "mt-oil-fracfocus-${local.env}-monthly"
   schedule              = "0 2 1 * *"
   time_zone             = "America/Denver"
@@ -247,7 +247,7 @@ module "pdf_fetch_scheduler" {
   project_id = var.project_id
   region     = var.scheduler_region
 
-  enabled               = false
+  enabled               = true
   job_name              = "mt-oil-pdf-fetch-${local.env}-monthly"
   schedule              = "0 5 3 * *"
   time_zone             = "America/Denver"

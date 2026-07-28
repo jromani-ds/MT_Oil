@@ -36,7 +36,7 @@ variable "service_account_email" {
 }
 
 variable "enabled" {
-  description = "Whether to create Cloud Scheduler resources. Disable if the GCP project cannot provision an App Engine app."
+  description = "Whether to create Cloud Scheduler resources and IAM bindings."
   type        = bool
   default     = true
 }
