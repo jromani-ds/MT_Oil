@@ -32,6 +32,8 @@ locals {
     project     = "mt-oil"
     managed_by  = "terraform"
   }
+  # App Engine location must match the scheduler region (e.g. us-central1 -> us-central).
+  app_engine_location = var.scheduler_region == "us-central1" ? "us-central" : var.scheduler_region
 }
 
 # Service account used by Cloud Run API and Cloud Run Jobs at runtime.
@@ -199,6 +201,14 @@ module "fracfocus_job" {
   depends_on = [module.gcs, module.bigquery]
 }
 
+# Cloud Scheduler requires exactly one App Engine app per project.
+# We manage it here once and have each scheduler depend on it.
+resource "google_app_engine_application" "app_engine" {
+  project       = var.project_id
+  location_id   = local.app_engine_location
+  database_type = "CLOUD_FIRESTORE"
+}
+
 module "fracfocus_scheduler" {
   source     = "../../modules/cloud_scheduler"
   project_id = var.project_id
@@ -211,7 +221,10 @@ module "fracfocus_scheduler" {
   cloud_run_job_name    = module.fracfocus_job.job_name
   service_account_email = google_service_account.runtime.email
 
-  depends_on = [module.fracfocus_job]
+  depends_on = [
+    module.fracfocus_job,
+    google_app_engine_application.app_engine,
+  ]
 }
 
 module "pdf_fetch_job" {
@@ -258,5 +271,8 @@ module "pdf_fetch_scheduler" {
   cloud_run_job_name    = module.pdf_fetch_job.job_name
   service_account_email = google_service_account.runtime.email
 
-  depends_on = [module.pdf_fetch_job]
+  depends_on = [
+    module.pdf_fetch_job,
+    google_app_engine_application.app_engine,
+  ]
 }

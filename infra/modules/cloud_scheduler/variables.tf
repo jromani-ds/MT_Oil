@@ -40,9 +40,3 @@ variable "enabled" {
   type        = bool
   default     = true
 }
-
-variable "app_engine_location" {
-  description = "App Engine location for Cloud Scheduler (must match scheduler region, e.g. us-central for us-central1)"
-  type        = string
-  default     = "us-central"
-}
