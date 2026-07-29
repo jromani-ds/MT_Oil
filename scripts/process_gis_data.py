@@ -29,14 +29,14 @@ import geopandas as gpd
 import pandas as pd
 from google.cloud import storage
 
-GIS_BASE_URL = "https://bogwebfiles.dnrc.mt.gov/GISData/"
+GIS_BASE_URL = "https://bogfiles.dnrc.mt.gov//GISData/"
 
-TARGET_ZIPS: dict[str, str] = {
-    "WellPaths.zip": "well_paths",
-    "Wells.zip": "wells_surfaces",
-    "delineatedfields.zip": "fields",
-    "units.zip": "units",
-    "gstUnits.zip": "units_gst",
+TARGET_ZIPS: dict[str, dict[str, str]] = {
+    "WellPaths": {"filename": "WellPaths.zip", "dataset": "well_paths"},
+    "WellSurface": {"filename": "Wells.zip", "dataset": "wells_surfaces"},
+    "FieldBoundaries": {"filename": "delineatedfields.zip", "dataset": "fields"},
+    "Units": {"filename": "units.zip", "dataset": "units"},
+    "GasStorage": {"filename": "gstUnits.zip", "dataset": "units_gst"},
 }
 
 OUTPUT_NAMES: dict[str, str] = {
@@ -105,7 +105,13 @@ def _simplify_geometries(
 
 
 def _filter_active_records(gdf: gpd.GeoDataFrame, dataset: str) -> gpd.GeoDataFrame:
-    """Drop inactive or historical-only records based on known column conventions."""
+    """Drop inactive or historical-only records based on known column conventions.
+
+    For wells_surfaces, skip filtering — the frontend renders all wells
+    and the user can inspect status from the popup.
+    """
+    if dataset == "wells_surfaces":
+        return gdf
     status_cols = [
         c for c in gdf.columns if c.lower() in ("status", "active", "inactive")
     ]
@@ -177,10 +183,12 @@ def process_all(
 
     results: dict[str, str] = {}
 
-    for zip_name, dataset_key in TARGET_ZIPS.items():
-        print(f"\n=== Processing {zip_name} ({dataset_key}) ===")
+    for subdir, info in TARGET_ZIPS.items():
+        dataset_key = info["dataset"]
+        filename = info["filename"]
+        print(f"\n=== Processing {subdir}/{filename} ({dataset_key}) ===")
 
-        url = f"{GIS_BASE_URL}{zip_name}"
+        url = f"{GIS_BASE_URL}{subdir}/{filename}"
         zip_path = _download_zip(url, download_dir)
 
         gdf = _read_shapefile_from_zip(zip_path)
@@ -192,7 +200,8 @@ def process_all(
 
         # Merge gstUnits into units if applicable
         if dataset_key == "units":
-            gst_zip = download_dir / "gstUnits.zip"
+            gst_url = f"{GIS_BASE_URL}GasStorage/gstUnits.zip"
+            gst_zip = _download_zip(gst_url, download_dir)
             gst_gdf = _merge_gst_units(download_dir, gst_zip)
             if gst_gdf is not None:
                 print(f"    Merged {len(gst_gdf):,} gas storage unit features.")
