@@ -122,7 +122,7 @@ jobs:
 
       - name: Build frontend
         working-directory: ./frontend
-        run: VITE_API_BASE_URL=${{ steps.api.outputs.url }} npm run build
+        run: VITE_API_BASE_URL=${{ steps.api.outputs.url }} VITE_GIS_BASE_URL=https://storage.googleapis.com/${{ env.GCP_PROJECT_ID }}-mt-oil-${{ inputs.environment }}/gis/ npm run build
 
       - name: Deploy frontend to GCS
         working-directory: ./frontend
