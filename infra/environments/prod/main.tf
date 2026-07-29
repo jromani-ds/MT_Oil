@@ -147,7 +147,7 @@ module "cloud_run" {
 
   min_scale             = 0
   max_scale             = 1
-  memory                = "1Gi"
+  memory                = "2Gi"
   cpu                   = "1"
   cpu_always_allocated  = false
   allow_unauthenticated = true

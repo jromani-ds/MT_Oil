@@ -117,7 +117,7 @@ Environment-specific inputs (bucket names, locations, alert email, etc.) are set
 
 This is a personal demo with a strict ~$10/month budget. Key limits:
 
-- Cloud Run: `max_scale = 1`, CPU throttled, 512 MiB–1 GiB memory.
+- Cloud Run: `max_scale = 1`, CPU throttled, 2 GiB memory.
 - BigQuery: production table partitioned by `Rpt_Date` and clustered by `API_WellNo`.
 - GCP budget alert set at $5/month.
 - No long-running VMs, no dedicated load balancers, no Vertex AI training.
