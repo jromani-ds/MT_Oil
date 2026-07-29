@@ -28,6 +28,7 @@ class Settings:
     environment: str
     gcp_project_id: str
     gcs_data_bucket: str
+    gis_data_bucket: str  # GCS bucket for serving GIS GeoJSON (same as gcs_data_bucket)
     bigquery_dataset: str
     model_path: str
     enable_local_data: bool
@@ -72,6 +73,7 @@ def load_settings() -> Settings:
         environment=os.getenv("ENVIRONMENT", "local"),
         gcp_project_id=os.getenv("GCP_PROJECT_ID", ""),
         gcs_data_bucket=os.getenv("GCS_DATA_BUCKET", ""),
+        gis_data_bucket=os.getenv("GIS_DATA_BUCKET", os.getenv("GCS_DATA_BUCKET", "")),
         bigquery_dataset=os.getenv("BIGQUERY_DATASET", ""),
         model_path=os.getenv("MODEL_PATH", "rf_model.joblib"),
         enable_local_data=os.getenv("ENABLE_LOCAL_DATA", "true").lower()

@@ -3,11 +3,14 @@ import 'leaflet/dist/leaflet.css';
 import type { Well } from './api/client';
 import './Map.css';
 import { useEffect } from 'react';
+import { GisLayers } from './GisLayers';
+import type { GisLayerState } from './GisLayers';
 
 interface MapProps {
     wells: Well[];
     selectedWell: Well | null;
     onSelectWell: (well: Well) => void;
+    gisLayers: GisLayerState;
 }
 
 // Component to recenter map when selected well changes
@@ -19,7 +22,7 @@ function Recenter({ lat, long }: { lat: number; long: number }) {
     return null;
 }
 
-export function MapComponent({ wells, selectedWell, onSelectWell }: MapProps) {
+export function MapComponent({ wells, selectedWell, onSelectWell, gisLayers }: MapProps) {
     // Default center (Montana roughly)
     const center: [number, number] = [47.5, -109.5];
     const zoom = 7;
@@ -52,6 +55,8 @@ export function MapComponent({ wells, selectedWell, onSelectWell }: MapProps) {
                     </Popup>
                 </CircleMarker>
             ))}
+
+            <GisLayers visible={gisLayers} />
 
             {selectedWell && <Recenter lat={selectedWell.Lat} long={selectedWell.Long} />}
         </MapContainer>

@@ -1,0 +1,10 @@
+.gis-popup {
+    font-size: 13px;
+    line-height: 1.5;
+    min-width: 150px;
+}
+
+.gis-popup strong {
+    font-size: 14px;
+    color: #1e293b;
+}

@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { getWells, getWellProduction, fitDecline, runEconomics, getFilterOptions } from './api/client';
 import type { Well, ProductionRecord, DeclineResponse, EconomicMetrics, FilterOptions, FilterParams } from './api/client';
 import { MapComponent } from './MapComponent';
+import { useGisFeatureCounts } from './GisLayers';
+import type { GisLayerState } from './GisLayers';
+import { LayerToggle } from './LayerToggle';
 import { Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Area } from 'recharts';
 import { Terminal, Activity, DollarSign, Filter, Loader2, Map, TrendingDown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -29,9 +32,21 @@ export function Dashboard() {
     const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
     const [filters, setFilters] = useState<FilterParams>({
         hasProduction: true,
-        limit: 0
+limit: 0
     });
     const [showFilters, setShowFilters] = useState(true);
+
+    // GIS Layer Toggle State
+    const [gisLayers, setGisLayers] = useState<GisLayerState>({
+        paths: false,
+        fields: false,
+        units: false,
+    });
+    const gisFeatureCounts = useGisFeatureCounts(gisLayers);
+
+    const toggleGisLayer = (key: keyof GisLayerState) => {
+        setGisLayers(prev => ({ ...prev, [key]: !prev[key] }));
+    };
 
     // Load Filter Options & Initial Wells
     useEffect(() => {
@@ -269,12 +284,18 @@ export function Dashboard() {
                                     </p>
                                 </div>
                             )}
+
+                            <LayerToggle
+                                layers={gisLayers}
+                                onToggle={toggleGisLayer}
+                                featureCounts={gisFeatureCounts}
+                            />
                         </div>
 
                         {/* Map */}
                         <div className="flex-1">
                             <div className="bg-white h-full overflow-hidden">
-                                <MapComponent wells={wells} selectedWell={selectedWell} onSelectWell={setSelectedWell} />
+                                <MapComponent wells={wells} selectedWell={selectedWell} onSelectWell={setSelectedWell} gisLayers={gisLayers} />
                             </div>
                         </div>
                     </div>
