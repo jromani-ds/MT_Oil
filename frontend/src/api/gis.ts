@@ -1,7 +1,6 @@
 const GIS_BASE_URL = import.meta.env.VITE_GIS_BASE_URL || '';
 
 export interface GisLayerUrls {
-    wells_surfaces: string;
     well_paths: string;
     fields: string;
     units: string;
@@ -10,7 +9,6 @@ export interface GisLayerUrls {
 function defaultUrls(): GisLayerUrls {
     const base = GIS_BASE_URL;
     return {
-        wells_surfaces: `${base}wells_surfaces.json`,
         well_paths: `${base}well_paths.json`,
         fields: `${base}fields.json`,
         units: `${base}units.json`,
