@@ -137,6 +137,54 @@ Direct pushes to `dev` and `main` are blocked by branch protection.
 
 ## Operations
 
+### Seeding BigQuery Data
+
+The backend loads well headers and production history from BigQuery. This is a
+manual, one-time seed step run from a developer workstation.
+
+Two datasets are used so dev and prod stay isolated, but the data itself is kept
+identical by seeding both from the same source files in GCS.
+
+#### Prerequisites
+
+1. Download the Montana DNRC source files to the repository root:
+
+   - `MT_HistoricalWellList.tab`
+   - `MT_HistoricalWellProduction.tab`
+
+2. Ensure you have authenticated to GCP (`gcloud auth application-default login`).
+
+#### First-time seed (upload source files to GCS)
+
+```bash
+python scripts/seed_bigquery.py \
+  --project <GCP_PROJECT_ID> \
+  --gcs-bucket <GCS_BUCKET_NAME> \
+  --all-datasets \
+  --upload-source
+```
+
+This uploads the `.tab` files to `gs://<GCS_BUCKET_NAME>/raw/seed/` and then
+loads the same data into both `mt_oil_dev` and `mt_oil_prod`. After uploading,
+the script verifies that both datasets have identical row counts.
+
+#### Re-seeding from existing GCS files
+
+```bash
+python scripts/seed_bigquery.py \
+  --project <GCP_PROJECT_ID> \
+  --gcs-bucket <GCS_BUCKET_NAME> \
+  --all-datasets
+```
+
+#### Single-dataset seed (legacy behavior)
+
+```bash
+python scripts/seed_bigquery.py \
+  --project <GCP_PROJECT_ID> \
+  --dataset mt_oil_dev
+```
+
 ### FracFocus Updates
 
 Cloud Scheduler is enabled and triggers the FracFocus and PDF fetch jobs monthly. For ad-hoc runs, trigger manually:
