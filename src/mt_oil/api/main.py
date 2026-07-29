@@ -222,6 +222,7 @@ def get_wells(
         df = df[df["Slant"] == slant]
 
     filtered = df.iloc[skip : skip + limit]
+    filtered = filtered.replace([np.inf, -np.inf, np.nan], None)
     return filtered.to_dict(orient="records")
 
 
@@ -236,7 +237,12 @@ def get_well_details(
     if api_number not in db.well_df.index:
         raise HTTPException(status_code=404, detail="Well not found")
 
-    well = db.well_df.loc[api_number].to_dict()
+    well = (
+        db.well_df.loc[[api_number]]
+        .replace([np.inf, -np.inf, np.nan], None)
+        .iloc[0]
+        .to_dict()
+    )
     well["API_WellNo"] = api_number
     return well
 
@@ -255,9 +261,11 @@ def get_well_production(request: Request, api_number: str):
     if well_data.empty:
         return []
 
-    result = well_data[
-        ["Rpt_Date", "BBLS_OIL_COND", "MCF_GAS", "BBLS_WTR", "DAYS_PROD"]
-    ].fillna(0)
+    result = (
+        well_data[["Rpt_Date", "BBLS_OIL_COND", "MCF_GAS", "BBLS_WTR", "DAYS_PROD"]]
+        .fillna(0)
+        .replace([np.inf, -np.inf], 0)
+    )
     result["Rpt_Date"] = pd.to_datetime(result["Rpt_Date"])
     result = result.sort_values("Rpt_Date")
 
