@@ -136,6 +136,17 @@ resource "google_storage_bucket_iam_member" "frontend_public" {
   member = "allUsers"
 }
 
+resource "google_storage_bucket_iam_member" "gis_public" {
+  bucket = module.gcs.bucket_name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+  condition {
+    title       = "gis_prefix_only"
+    description = "Restrict to gis/ prefix for public map layers"
+    expression  = "resource.name.startsWith(\"projects/_/buckets/${module.gcs.bucket_name}/objects/gis/\")"
+  }
+}
+
 module "cloud_run" {
   source     = "../../modules/cloud_run"
   project_id = var.project_id
@@ -255,6 +266,50 @@ module "pdf_fetch_scheduler" {
   service_account_email = google_service_account.runtime.email
 
   depends_on = [module.pdf_fetch_job]
+}
+
+module "gis_update_job" {
+  source     = "../../modules/cloud_run_job"
+  project_id = var.project_id
+  region     = var.region
+
+  job_name              = "mt-oil-gis-update-${local.env}"
+  image                 = var.api_image
+  service_account_email = google_service_account.runtime.email
+  memory                = "4Gi"
+  cpu                   = "2"
+  timeout_seconds       = 3600
+  max_retries           = 2
+
+  env_vars = {
+    ENVIRONMENT      = local.env
+    GCP_PROJECT_ID   = var.project_id
+    GCS_DATA_BUCKET  = module.gcs.bucket_name
+    BIGQUERY_DATASET = module.bigquery.dataset_id
+    JOB_NAME         = "gis-update"
+  }
+
+  command = ["python"]
+  args    = ["-m", "mt_oil.jobs.gis_update"]
+
+  labels = local.labels
+
+  depends_on = [module.gcs, module.bigquery]
+}
+
+module "gis_update_scheduler" {
+  source     = "../../modules/cloud_scheduler"
+  project_id = var.project_id
+  region     = var.scheduler_region
+
+  enabled               = true
+  job_name              = "mt-oil-gis-update-${local.env}-monthly"
+  schedule              = "0 0 5 * *"
+  time_zone             = "America/Denver"
+  cloud_run_job_name    = module.gis_update_job.job_name
+  service_account_email = google_service_account.runtime.email
+
+  depends_on = [module.gis_update_job]
 }
 
 module "monitoring" {
