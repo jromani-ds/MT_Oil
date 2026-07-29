@@ -221,7 +221,7 @@ def get_wells(
     if slant:
         df = df[df["Slant"] == slant]
 
-    filtered = df.iloc[skip : skip + limit]
+    filtered = df.iloc[skip:] if limit <= 0 else df.iloc[skip : skip + limit]
     filtered = filtered.replace([np.inf, -np.inf, np.nan], None)
     return filtered.to_dict(orient="records")
 
