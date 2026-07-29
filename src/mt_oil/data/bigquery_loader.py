@@ -43,6 +43,7 @@ class BigQueryDataLoader:
             completion_date,
             status
         FROM {self._table('wells')}
+        ORDER BY api_wellno
         """
         df = self.client.query(query).to_dataframe()
         df = df.rename(
