@@ -142,11 +142,6 @@ resource "google_storage_bucket_iam_member" "gis_public" {
   bucket = module.gcs.bucket_name
   role   = "roles/storage.objectViewer"
   member = "allUsers"
-  condition {
-    title       = "gis_prefix_only"
-    description = "Restrict to gis/ prefix for public map layers"
-    expression  = "resource.name.startsWith(\"projects/_/buckets/${module.gcs.bucket_name}/objects/gis/\")"
-  }
 }
 
 module "cloud_run" {
