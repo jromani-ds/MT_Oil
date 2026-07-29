@@ -1,0 +1,56 @@
+name: Seed GIS Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  seed-gis:
+    name: Seed GIS GeoJSON to GCS (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          audience: https://github.com/${{ github.repository }}
+          token_format: access_token
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install geopandas google-cloud-storage
+
+      - name: Run GIS data processing
+        run: |
+          BUCKET="${{ vars.GCP_PROJECT_ID }}-mt-oil-${{ inputs.environment }}"
+          python scripts/process_gis_data.py \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --bucket "$BUCKET"
