@@ -38,7 +38,6 @@ limit: 0
 
     // GIS Layer Toggle State
     const [gisLayers, setGisLayers] = useState<GisLayerState>({
-        wells: false,
         paths: false,
         fields: false,
         units: false,

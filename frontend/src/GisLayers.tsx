@@ -5,7 +5,6 @@ import { fetchGeoJson, getGisLayerUrls } from './api/gis';
 import './GisLayers.css';
 
 export interface GisLayerState {
-    wells: boolean;
     paths: boolean;
     fields: boolean;
     units: boolean;
@@ -18,17 +17,6 @@ interface GisLayersProps {
 interface GeoData {
     data: GeoJSON.FeatureCollection | null;
     featureCount: number;
-}
-
-function wellPointToLayer(_feature: unknown, latlng: L.LatLng): L.CircleMarker {
-    return L.circleMarker(latlng, {
-        radius: 4,
-        fillColor: '#1d4ed8',
-        color: '#1e3a8a',
-        weight: 1,
-        opacity: 0.8,
-        fillOpacity: 0.7,
-    });
 }
 
 function wellPathStyle(): L.PathOptions {
@@ -58,20 +46,6 @@ function unitStyle(): L.PathOptions {
         dashArray: '6 4',
         opacity: 0.8,
     };
-}
-
-function wellPopup(feature: GeoJSON.GeoJsonProperties): string {
-    const props = feature || {};
-    return `
-        <div class="gis-popup">
-            <strong>Well Surface</strong><br/>
-            API: ${props.API_WellNo || props.api_wellno || props.API_NUMBER || 'N/A'}<br/>
-            ${props.WellName || props.well_name || props.NAME ? `Name: ${props.WellName || props.well_name || props.NAME}<br/>` : ''}
-            ${props.Operator || props.operator || props.OPERATOR ? `Operator: ${props.Operator || props.operator || props.OPERATOR}<br/>` : ''}
-            ${props.Type || props.type ? `Type: ${props.Type || props.type}<br/>` : ''}
-            ${props.TD || props.td ? `TD: ${props.TD || props.td} ft` : ''}
-        </div>
-    `;
 }
 
 function pathPopup(feature: GeoJSON.GeoJsonProperties): string {
@@ -121,7 +95,6 @@ function useGeoJsonData(layerKey: keyof GisLayerState, visible: boolean): GeoDat
             let cancelled = false;
             const urls = getGisLayerUrls();
             const urlMap: Record<keyof GisLayerState, string> = {
-                wells: urls.wells_surfaces,
                 paths: urls.well_paths,
                 fields: urls.fields,
                 units: urls.units,
@@ -148,21 +121,6 @@ function useGeoJsonData(layerKey: keyof GisLayerState, visible: boolean): GeoDat
     }, [layerKey, visible]);
 
     return data;
-}
-
-function WellSurfacesLayer() {
-    const { data } = useGeoJsonData('wells', true);
-    if (!data) return null;
-    return (
-        <GeoJSON
-            key="wells-surfaces"
-            data={data}
-            pointToLayer={wellPointToLayer}
-            onEachFeature={(feature, layer) => {
-                layer.bindPopup(wellPopup(feature.properties));
-            }}
-        />
-    );
 }
 
 function WellPathsLayer() {
@@ -213,7 +171,6 @@ function UnitsLayer() {
 export function GisLayers({ visible }: GisLayersProps) {
     return (
         <>
-            {visible.wells && <WellSurfacesLayer />}
             {visible.paths && <WellPathsLayer />}
             {visible.fields && <FieldsLayer />}
             {visible.units && <UnitsLayer />}
@@ -223,13 +180,11 @@ export function GisLayers({ visible }: GisLayersProps) {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useGisFeatureCounts(visible: GisLayerState): Record<string, number> {
-    const wells = useGeoJsonData('wells', visible.wells);
     const paths = useGeoJsonData('paths', visible.paths);
     const fields = useGeoJsonData('fields', visible.fields);
     const units = useGeoJsonData('units', visible.units);
 
     return {
-        wells: wells.featureCount,
         paths: paths.featureCount,
         fields: fields.featureCount,
         units: units.featureCount,
