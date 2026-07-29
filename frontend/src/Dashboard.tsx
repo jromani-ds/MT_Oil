@@ -29,7 +29,7 @@ export function Dashboard() {
     const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
     const [filters, setFilters] = useState<FilterParams>({
         hasProduction: true,
-        limit: 500
+        limit: 5000
     });
     const [showFilters, setShowFilters] = useState(true);
 
