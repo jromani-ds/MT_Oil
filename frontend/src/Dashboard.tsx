@@ -29,7 +29,9 @@ export function Dashboard() {
     const [activeTab, setActiveTab] = useState<TabType>('map');
     const [wellfileUrl, setWellfileUrl] = useState<WellfileResponse | null>(null);
     const econParamsRef = useRef(econParams);
-    econParamsRef.current = econParams;
+useEffect(() => {
+        econParamsRef.current = econParams;
+    }, [econParams]);
 
     // Filter State
     const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
@@ -99,63 +101,55 @@ limit: 0
         }
     };
 
-    // When a well is selected, load its data
-    useEffect(() => {
-        if (!selectedWell) return;
-
+    const handleSelectWell = (well: Well) => {
+        setSelectedWell(well);
         setLoading(true);
         setPrediction(null);
         setEconomics(null);
         setWellfileUrl(null);
+        setProduction([]);
+    };
 
-        const fetchData = async () => {
-            try {
-                const data = await getWellProduction(selectedWell.API_WellNo);
-                setProduction(data);
+    // When a well is selected, load its data
+    useEffect(() => {
+        if (!selectedWell) return;
 
-                try {
-                    const wf = await getWellfileUrl(selectedWell.API_WellNo);
-                    setWellfileUrl(wf);
-                } catch {
-                    setWellfileUrl(null);
-                }
+const apiNumber = selectedWell.API_WellNo;
 
-                if (data.length > 12) {
-                    try {
-                        const pred = await fitDecline(selectedWell.API_WellNo);
-                        setPrediction(pred);
-                    } catch (e) {
-                        console.error("DCA Failed", e);
+        Promise.all([
+            getWellProduction(apiNumber),
+            getWellfileUrl(apiNumber).catch(() => null),
+        ]).then(([prod, wf]) => {
+            setProduction(prod);
+            setWellfileUrl(wf as WellfileResponse | null);
+
+if (prod.length > 12) {
+                fitDecline(apiNumber)
+                    .then(setPrediction)
+                    .catch(() => {
                         toast.error("Failed to forecast decline curve");
-                    }
-
-                    try {
-                        const econ = await runEconomics(
-                            selectedWell.API_WellNo,
-                            econParamsRef.current.oilPrice,
-                            econParamsRef.current.capex * 1_000_000,
-                            econParamsRef.current.opex,
-                            econParamsRef.current.discount / 100,
-                            econParamsRef.current.abandonment,
-                            econParamsRef.current.gasPrice
-                        );
-                        setEconomics(econ);
-                    } catch (e) {
-                        console.error("Econ Failed", e);
+                    });
+                runEconomics(
+                    apiNumber,
+                    econParamsRef.current.oilPrice,
+                    econParamsRef.current.capex * 1_000_000,
+                    econParamsRef.current.opex,
+                    econParamsRef.current.discount / 100,
+                    econParamsRef.current.abandonment,
+                    econParamsRef.current.gasPrice
+                )
+                    .then(setEconomics)
+                    .catch(() => {
                         toast.error("Failed to run initial economics");
-                    }
-                } else if (data.length === 0) {
-                    toast.info("No production history for this well");
-                }
-            } catch (e) {
-                console.error(e);
-                toast.error("Failed to load production data");
-            } finally {
-                setLoading(false);
+                    });
+            } else if (prod.length === 0) {
+                toast.info("No production history for this well");
             }
-        };
-
-        fetchData();
+        }).catch(() => {
+            toast.error("Failed to load production data");
+        }).finally(() => {
+            setLoading(false);
+        });
 
     }, [selectedWell]);
 
@@ -220,18 +214,18 @@ limit: 0
                 </div>
             </div>
 
-            <div className="flex flex-1 overflow-hidden">
-                {/* Map Tab */}
+            <div className="flex flex-1 overflow-hidden relative">
+                {loading && (
+                    <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center z-50">
+                        <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
+                            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                            <span className="font-semibold text-gray-700">Analyzing Data...</span>
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === 'map' && (
-                    <div className="flex flex-1 overflow-hidden relative">
-                        {loading && (
-                            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center z-50">
-                                <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
-                                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                                    <span className="font-semibold text-gray-700">Analyzing Data...</span>
-                                </div>
-                            </div>
-                        )}
+                    <div className="flex flex-1 overflow-hidden">
                         {/* Sidebar with Filters */}
                         <div className="w-72 lg:w-80 p-4 flex flex-col gap-4 overflow-y-auto border-r border-gray-200 bg-white">
                             {/* Filters Card */}
@@ -306,7 +300,7 @@ limit: 0
                         {/* Map */}
                         <div className="flex-1">
                             <div className="bg-white h-full overflow-hidden">
-                                <MapComponent wells={wells} selectedWell={selectedWell} onSelectWell={setSelectedWell} gisLayers={gisLayers} />
+                                <MapComponent wells={wells} selectedWell={selectedWell} onSelectWell={handleSelectWell} gisLayers={gisLayers} />
                             </div>
                         </div>
                     </div>
@@ -315,7 +309,21 @@ limit: 0
                 {/* Decline Curve Tab */}
                 {activeTab === 'decline' && (
                     <div className="flex-1 overflow-y-auto flex flex-col">
-                        {selectedWell ? (
+                        {!selectedWell ? (
+                            <div className="h-full flex items-center justify-center text-gray-400">
+                                <div className="text-center">
+                                    <TrendingDown className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                                    <p className="text-lg">Select a well from the Map tab to view decline curve analysis</p>
+                                </div>
+                            </div>
+                        ) : loading ? (
+                            <div className="h-full flex items-center justify-center text-gray-400">
+                                <div className="text-center">
+                                    <Loader2 className="w-16 h-16 mx-auto mb-4 opacity-20 animate-spin" />
+                                    <p className="text-lg">Loading production data...</p>
+                                </div>
+                            </div>
+                        ) : (
                             <>
                                 {/* Header */}
                                 <div className="bg-white shadow-md flex-shrink-0">
@@ -402,13 +410,6 @@ limit: 0
                                     )}
                                 </div>
                             </>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-gray-400">
-                                <div className="text-center">
-                                    <TrendingDown className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                                    <p className="text-lg">Select a well from the Map tab to view decline curve analysis</p>
-                                </div>
-                            </div>
                         )}
                     </div>
                 )}
@@ -416,7 +417,28 @@ limit: 0
                 {/* Economics Tab */}
                 {activeTab === 'economics' && (
                     <div className="flex-1 overflow-y-auto">
-                        {selectedWell && economics ? (
+                        {!selectedWell ? (
+                            <div className="h-full flex items-center justify-center text-gray-400">
+                                <div className="text-center">
+                                    <DollarSign className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                                    <p className="text-lg">Select a well from the Map tab to view economics analysis</p>
+                                </div>
+                            </div>
+                        ) : loading ? (
+                            <div className="h-full flex items-center justify-center text-gray-400">
+                                <div className="text-center">
+                                    <Loader2 className="w-16 h-16 mx-auto mb-4 opacity-20 animate-spin" />
+                                    <p className="text-lg">Loading economics data...</p>
+                                </div>
+                            </div>
+                        ) : !economics ? (
+                            <div className="h-full flex items-center justify-center text-gray-400">
+                                <div className="text-center">
+                                    <DollarSign className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                                    <p className="text-lg">No economic data available for this well.</p>
+                                </div>
+                            </div>
+                        ) : (
                             <div className="w-full">
                                 <div className="bg-white p-8 rounded-lg shadow-md border-l-4 border-green-500">
                                     <div className="flex justify-between items-center mb-6">
@@ -517,13 +539,6 @@ limit: 0
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-gray-400">
-                                <div className="text-center">
-                                    <DollarSign className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                                    <p className="text-lg">Select a well from the Map tab to view economics analysis</p>
                                 </div>
                             </div>
                         )}
