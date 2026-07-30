@@ -38,6 +38,7 @@ class Settings:
     cors_origins: List[str]
     skip_data_load: bool
     rate_limit: str
+    wellfile_state_url_template: str
 
 
 def _split_cors(raw: Optional[str], frontend_url: Optional[str]) -> List[str]:
@@ -85,6 +86,10 @@ def load_settings() -> Settings:
         skip_data_load=os.getenv("SKIP_DATA_LOAD", "false").lower()
         in ("1", "true", "yes"),
         rate_limit=os.getenv("RATE_LIMIT", "60/minute"),
+        wellfile_state_url_template=os.getenv(
+            "WELLFILE_STATE_URL_TEMPLATE",
+            "https://bogapps.dnrc.mt.gov/html/imaging.aspx?num={api_number}",
+        ),
     )
 
 
