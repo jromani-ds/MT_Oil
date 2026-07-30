@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { getWells, getWellProduction, fitDecline, runEconomics, getFilterOptions } from './api/client';
-import type { Well, ProductionRecord, DeclineResponse, EconomicMetrics, FilterOptions, FilterParams } from './api/client';
+import { useEffect, useState, useRef } from 'react';
+import { getWells, getWellProduction, fitDecline, runEconomics, getWellfileUrl, getFilterOptions } from './api/client';
+import type { Well, ProductionRecord, DeclineResponse, EconomicMetrics, FilterOptions, FilterParams, WellfileResponse } from './api/client';
 import { MapComponent } from './MapComponent';
 import { useGisFeatureCounts } from './GisLayers';
 import type { GisLayerState } from './GisLayers';
@@ -27,6 +27,9 @@ export function Dashboard() {
     });
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<TabType>('map');
+    const [wellfileUrl, setWellfileUrl] = useState<WellfileResponse | null>(null);
+    const econParamsRef = useRef(econParams);
+    econParamsRef.current = econParams;
 
     // Filter State
     const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
@@ -103,11 +106,19 @@ limit: 0
         setLoading(true);
         setPrediction(null);
         setEconomics(null);
+        setWellfileUrl(null);
 
         const fetchData = async () => {
             try {
                 const data = await getWellProduction(selectedWell.API_WellNo);
                 setProduction(data);
+
+                try {
+                    const wf = await getWellfileUrl(selectedWell.API_WellNo);
+                    setWellfileUrl(wf);
+                } catch {
+                    setWellfileUrl(null);
+                }
 
                 if (data.length > 12) {
                     try {
@@ -121,12 +132,12 @@ limit: 0
                     try {
                         const econ = await runEconomics(
                             selectedWell.API_WellNo,
-                            econParams.oilPrice,
-                            econParams.capex * 1_000_000,
-                            econParams.opex,
-                            econParams.discount / 100,
-                            econParams.abandonment,
-                            econParams.gasPrice
+                            econParamsRef.current.oilPrice,
+                            econParamsRef.current.capex * 1_000_000,
+                            econParamsRef.current.opex,
+                            econParamsRef.current.discount / 100,
+                            econParamsRef.current.abandonment,
+                            econParamsRef.current.gasPrice
                         );
                         setEconomics(econ);
                     } catch (e) {
@@ -408,9 +419,24 @@ limit: 0
                         {selectedWell && economics ? (
                             <div className="w-full">
                                 <div className="bg-white p-8 rounded-lg shadow-md border-l-4 border-green-500">
-                                    <h3 className="font-bold text-2xl mb-6 flex items-center gap-2 text-gray-800">
-                                        <DollarSign className="w-8 h-8 text-green-600" /> Economics Analysis
-                                    </h3>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="font-bold text-2xl flex items-center gap-2 text-gray-800">
+                                            <DollarSign className="w-8 h-8 text-green-600" /> Economics Analysis
+                                        </h3>
+                                        {wellfileUrl && (
+                                            <a
+                                                href={wellfileUrl.primary_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm transition-colors shadow-sm flex items-center gap-2"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                Download Official Wellfile
+                                            </a>
+                                        )}
+                                    </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
                                         <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg">

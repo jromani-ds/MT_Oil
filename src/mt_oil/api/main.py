@@ -247,6 +247,26 @@ def get_well_details(
     return well
 
 
+@app.get("/wells/{api_number}/wellfile")
+@limiter.limit(settings.rate_limit)
+def get_wellfile_url(
+    request: Request, api_number: str = Path(..., title="API Well Number")
+):
+    if db.well_df is None:
+        raise HTTPException(status_code=503, detail="Data not loaded")
+
+    if api_number not in db.well_df.index:
+        raise HTTPException(status_code=404, detail="Well not found")
+
+    clean = api_number.strip()[:10]
+    state_url = settings.wellfile_state_url_template.format(api_number=clean)
+    gcs_url = (
+        f"https://storage.googleapis.com/{settings.gcs_data_bucket}"
+        f"/wells/pdfs/{api_number}/{clean}.pdf"
+    )
+    return {"primary_url": state_url, "fallback_url": gcs_url}
+
+
 @app.get("/wells/{api_number}/production")
 @limiter.limit(settings.rate_limit)
 def get_well_production(request: Request, api_number: str):
