@@ -29,7 +29,7 @@ export function Dashboard() {
     const [activeTab, setActiveTab] = useState<TabType>('map');
     const [wellfileUrl, setWellfileUrl] = useState<WellfileResponse | null>(null);
     const econParamsRef = useRef(econParams);
-    useEffect(() => {
+useEffect(() => {
         econParamsRef.current = econParams;
     }, [econParams]);
 
@@ -114,7 +114,7 @@ limit: 0
     useEffect(() => {
         if (!selectedWell) return;
 
-        const apiNumber = selectedWell.API_WellNo;
+const apiNumber = selectedWell.API_WellNo;
 
         Promise.all([
             getWellProduction(apiNumber),
@@ -123,7 +123,7 @@ limit: 0
             setProduction(prod);
             setWellfileUrl(wf as WellfileResponse | null);
 
-            if (prod.length > 12) {
+if (prod.length > 12) {
                 fitDecline(apiNumber)
                     .then(setPrediction)
                     .catch(() => {
