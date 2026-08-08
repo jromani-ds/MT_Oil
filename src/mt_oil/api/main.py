@@ -12,7 +12,10 @@ from slowapi.util import get_remote_address
 
 from mt_oil.config import settings, logger
 from mt_oil.data.loader import pull_well_data, pull_prod_data, pull_ff_data
-from mt_oil.data.bigquery_loader import load_all_from_bigquery
+from mt_oil.data.bigquery_loader import (
+    load_all_from_bigquery,
+    BigQueryDataLoader,
+)
 from mt_oil.processing.features import (
     preprocess_well_data,
     preprocess_prod_data,
@@ -38,16 +41,50 @@ limiter = Limiter(key_func=_rate_limit_key)
 # Global Data Cache
 class DataStore:
     well_df: Optional[pd.DataFrame] = None
-    prod_df: Optional[pd.DataFrame] = None
-    totals_df: Optional[pd.DataFrame] = None
-    ff_df: Optional[pd.DataFrame] = None
-    merged_df: Optional[pd.DataFrame] = None  # Features for ML
     producing_wells_set: Optional[set] = None
-    ml_model: Optional[object] = None  # Pipeline object
+    ml_model: Optional[object] = None
     is_training: bool = False
+    totals_df: Optional[pd.DataFrame] = None
+    # Backward compat: populated in local-dev mode, None in BigQuery mode
+    prod_df: Optional[pd.DataFrame] = None
+    ff_df: Optional[pd.DataFrame] = None
+    merged_df: Optional[pd.DataFrame] = None
+
+    def bq_available(self) -> bool:
+        return (
+            not settings.enable_local_data
+            and bool(settings.gcp_project_id)
+            and bool(settings.bigquery_dataset)
+        )
 
 
 db = DataStore()
+_bq_loader: Optional[BigQueryDataLoader] = None
+
+
+def _get_bq_loader() -> BigQueryDataLoader:
+    global _bq_loader
+    if _bq_loader is None and db.bq_available():
+        _bq_loader = BigQueryDataLoader(
+            settings.gcp_project_id, settings.bigquery_dataset
+        )
+    return _bq_loader
+
+
+def _fetch_production_from_bq(api_number: str) -> list:
+    loader = _get_bq_loader()
+    if loader is None:
+        raise HTTPException(status_code=503, detail="Data source not available")
+    df = loader.load_production_for_well(api_number)
+    if df.empty:
+        return []
+    result = df[
+        ["Rpt_Date", "BBLS_OIL_COND", "MCF_GAS", "BBLS_WTR", "DAYS_PROD"]
+    ].copy()
+    result = result.fillna(0).replace([np.inf, -np.inf], 0)
+    result["Rpt_Date"] = pd.to_datetime(result["Rpt_Date"])
+    result = result.sort_values("Rpt_Date")
+    return result.to_dict(orient="records")
 
 
 @asynccontextmanager
@@ -63,71 +100,75 @@ async def lifespan(app: FastAPI):
         and settings.bigquery_dataset
     )
 
-    logger.info("[%s] Loading data... (BigQuery=%s)", settings.environment, use_bq)
+    logger.info(
+        "[%s] Loading well headers... (BigQuery=%s)", settings.environment, use_bq
+    )
     try:
         if use_bq:
-            raw_well, raw_prod, db.ff_df = load_all_from_bigquery(
+            raw_well, db.producing_wells_set = load_all_from_bigquery(
                 settings.gcp_project_id, settings.bigquery_dataset
+            )
+            logger.info(
+                "Loaded %s wells. %s producing wells.",
+                len(raw_well),
+                len(db.producing_wells_set),
             )
         else:
             raw_well = pull_well_data()
             _, raw_prod = pull_prod_data()
             raw_ff, _ = pull_ff_data()
-            raw_ff["APINumber"] = raw_ff["APINumber"].astype(str)
-            db.ff_df = preprocess_ff_data(raw_ff)
 
-        # Well headers (used by map/filters/details)
+            if raw_ff is not None:
+                raw_ff["APINumber"] = raw_ff["APINumber"].astype(str)
+                db.ff_df = preprocess_ff_data(raw_ff)
+
+            raw_prod["API_WellNo"] = raw_prod["API_WellNo"].astype(str)
+            db.prod_df = raw_prod.set_index("API_WellNo").sort_index()
+
+            sums = db.prod_df.groupby(level=0)[["BBLS_OIL_COND", "MCF_GAS"]].sum()
+            producing = sums[(sums["BBLS_OIL_COND"] > 0) | (sums["MCF_GAS"] > 0)]
+            db.producing_wells_set = set(producing.index)
+
         db.well_df = preprocess_well_data(raw_well)
         db.well_df.index = db.well_df.index.astype(str)
 
-        # Production history (used by production/DCA/economics endpoints)
-        raw_prod["API_WellNo"] = raw_prod["API_WellNo"].astype(str)
-        db.totals_df = preprocess_prod_data(raw_prod)
-        db.totals_df.index = db.totals_df.index.astype(str)
-
-        db.prod_df = raw_prod.set_index("API_WellNo").sort_index()
-
-        # Producing wells set for "has_production" filter
-        sums = db.prod_df.groupby(level=0)[["BBLS_OIL_COND", "MCF_GAS"]].sum()
-        producing = sums[(sums["BBLS_OIL_COND"] > 0) | (sums["MCF_GAS"] > 0)]
-        db.producing_wells_set = set(producing.index)
-
-        # FracFocus is optional (small feature set); failures should not break the app.
-        if db.ff_df is None:
-            logger.warning(
-                "FracFocus data not available; ML features will be unavailable."
+        if use_bq:
+            fmtn_map = raw_well[["API_WellNo", "Formation"]].set_index("API_WellNo")
+            db.well_df = db.well_df.join(fmtn_map)
+            db.well_df["Formation"] = db.well_df["Formation"].fillna("Unknown")
+            db.well_df = db.well_df.rename(columns={"Formation": "ST_FMTN_CD"})
+        else:
+            prod_reset = db.prod_df.reset_index()
+            unique_fmtn = (
+                prod_reset[["API_WellNo", "ST_FMTN_CD"]]
+                .drop_duplicates("API_WellNo")
+                .set_index("API_WellNo")
             )
+            db.well_df = db.well_df.join(unique_fmtn)
+            db.well_df["ST_FMTN_CD"] = db.well_df["ST_FMTN_CD"].fillna("Unknown")
 
-        # Merge for ML features
-        if db.ff_df is not None and not db.ff_df.empty:
-            try:
-                logger.info("Merging datasets for ML features...")
-                db.ff_df.index = db.ff_df.index.astype(str)
-                db.merged_df = merge_data(
-                    db.totals_df, db.well_df, db.ff_df, interval=720
-                )
-                logger.info("%s wells with full ML features.", len(db.merged_df))
-            except Exception as e:
-                logger.warning("ML feature merge failed: %s", e)
-                db.merged_df = None
+        if not use_bq:
+            db.totals_df = preprocess_prod_data(raw_prod)
+            db.totals_df.index = db.totals_df.index.astype(str)
 
-        # Load ML model from local path or GCS
+            if db.ff_df is not None and not db.ff_df.empty:
+                try:
+                    logger.info("Merging datasets for ML features...")
+                    db.ff_df.index = db.ff_df.index.astype(str)
+                    db.merged_df = merge_data(
+                        db.totals_df, db.well_df, db.ff_df, interval=720
+                    )
+                    logger.info("%s wells with full ML features.", len(db.merged_df))
+                except Exception as e:
+                    logger.warning("ML feature merge failed: %s", e)
+                    db.merged_df = None
+
         logger.info("Loading ML Model from %s...", settings.model_path)
         db.ml_model = load_model(settings.model_path)
         if db.ml_model:
             logger.info("ML Model loaded successfully.")
         else:
             logger.warning("No trained ML model found. Use /train endpoint to train.")
-
-        # Derive primary formation from production data
-        prod_reset = db.prod_df.reset_index()
-        unique_fmtn = (
-            prod_reset[["API_WellNo", "ST_FMTN_CD"]]
-            .drop_duplicates("API_WellNo")
-            .set_index("API_WellNo")
-        )
-        db.well_df = db.well_df.join(unique_fmtn)
-        db.well_df["ST_FMTN_CD"] = db.well_df["ST_FMTN_CD"].fillna("Unknown")
 
         logger.info(
             "Data Loaded: %s wells. %s producing wells.",
@@ -146,6 +187,7 @@ async def lifespan(app: FastAPI):
     db.ff_df = None
     db.merged_df = None
     db.ml_model = None
+    db.producing_wells_set = None
 
 
 app = FastAPI(title="MT Oil API", lifespan=lifespan)
@@ -165,15 +207,10 @@ app.add_middleware(
 @app.get("/health")
 @limiter.limit(settings.rate_limit)
 def health_check(request: Request):
-    use_bq = (
-        not settings.enable_local_data
-        and bool(settings.gcp_project_id)
-        and bool(settings.bigquery_dataset)
-    )
     return {
         "status": "ok",
         "environment": settings.environment,
-        "bigquery_enabled": use_bq,
+        "bigquery_enabled": db.bq_available(),
         "wells_loaded": len(db.well_df) if db.well_df is not None else 0,
         "producing_wells": len(db.producing_wells_set) if db.producing_wells_set else 0,
         "ml_model_loaded": db.ml_model is not None,
@@ -270,13 +307,15 @@ def get_wellfile_url(
 @app.get("/wells/{api_number}/production")
 @limiter.limit(settings.rate_limit)
 def get_well_production(request: Request, api_number: str):
-    if db.prod_df is None:
-        raise HTTPException(status_code=503, detail="Data not loaded")
-
-    if api_number in db.prod_df.index:
-        well_data = db.prod_df.loc[[api_number]]
+    if db.prod_df is not None:
+        if api_number in db.prod_df.index:
+            well_data = db.prod_df.loc[[api_number]]
+        else:
+            well_data = pd.DataFrame()
+    elif db.bq_available():
+        return _fetch_production_from_bq(api_number)
     else:
-        well_data = pd.DataFrame()
+        raise HTTPException(status_code=503, detail="Data not loaded")
 
     if well_data.empty:
         return []
@@ -328,7 +367,11 @@ def fit_decline_curve(
     api_number: str,
     method: str = Query("auto", enum=["auto", "arps", "duong"]),
 ):
-    prod_hist = get_well_production(request, api_number)
+    prod_hist = (
+        _fetch_production_from_bq(api_number)
+        if db.bq_available()
+        else get_well_production(request, api_number)
+    )
     if not prod_hist:
         raise HTTPException(status_code=404, detail="No production history found")
 
@@ -348,22 +391,11 @@ def fit_decline_curve(
 
     # ML Constrained Logic (Fine-Tuning)
     predicted_boe_eur = None
-    if db.ml_model and api_number in db.merged_df.index:
-        # Check if history is short (<12 months)
+    if db.ml_model and db.merged_df is not None and api_number in db.merged_df.index:
         if len(df) <= 12:
             try:
-                # Get features for this well
                 X_well = db.merged_df.loc[[api_number]].drop("BOE", axis=1)
                 predicted_boe_eur = db.ml_model.predict(X_well)[0]
-
-                # If predicted EUR is significantly different from fit, assume fit is bad due to short history
-                # This is a simple heuristic: if fit shows infinite growth or huge EUR, clamp it?
-                # For now, we will just return the ML EUR as extra info to the frontend
-                # or simpler: "Fine-tune" by logging it.
-                # Improving accuracy strategy:
-                # If Arps b > 1.5, clamp to 1.5? Or if forecasted EUR > 2x ML EUR, warn?
-                # Let's just include "ml_predicted_eur" in the response so the frontend can compare.
-                pass
             except Exception as e:
                 logger.warning("ML Prediction failed: %s", e)
 
@@ -399,9 +431,7 @@ def fit_decline_curve(
     }
 
     if predicted_boe_eur:
-        metrics["ml_predicted_eur_24mo"] = float(
-            predicted_boe_eur
-        )  # Note: ML target was 720 days (24mo) BOE
+        metrics["ml_predicted_eur_24mo"] = float(predicted_boe_eur)
 
     return metrics
 
@@ -423,16 +453,17 @@ def run_economics(
         raise HTTPException(status_code=400, detail="Could not forecast production")
 
     forecast_oil_prod = fit_res["forecast"]["production"]
-    prod_hist = get_well_production(request, api_number)
+    prod_hist = (
+        _fetch_production_from_bq(api_number)
+        if db.bq_available()
+        else get_well_production(request, api_number)
+    )
 
-    # Extract historical oil and gas production
     historical_oil_prod = [
         r["BBLS_OIL_COND"] for r in prod_hist if r["BBLS_OIL_COND"] is not None
     ]
     historical_gas_prod = [r["MCF_GAS"] for r in prod_hist if r["MCF_GAS"] is not None]
 
-    # For forecast, we only have oil forecast from DCA
-    # Assume gas-to-oil ratio from historical data for forecast
     if historical_oil_prod and historical_gas_prod:
         total_hist_oil = sum(historical_oil_prod)
         total_hist_gas = sum(historical_gas_prod)
@@ -457,7 +488,6 @@ def run_economics(
         abandonment_rate=abandonment_rate_monthly,
     )
 
-    # Add ML comparison if available
     if "ml_predicted_eur_24mo" in fit_res:
         econ_metrics["ml_predicted_eur_24mo"] = fit_res["ml_predicted_eur_24mo"]
 
