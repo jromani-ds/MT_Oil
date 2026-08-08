@@ -88,7 +88,7 @@ def load_settings() -> Settings:
         rate_limit=os.getenv("RATE_LIMIT", "60/minute"),
         wellfile_state_url_template=os.getenv(
             "WELLFILE_STATE_URL_TEMPLATE",
-            "https://bogapps.dnrc.mt.gov/html/imaging.aspx?num={api_number}",
+            "https://bogfiles.dnrc.mt.gov/Well_Data/{api_number}/{api_number}.pdf",
         ),
     )
 

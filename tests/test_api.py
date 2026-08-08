@@ -68,7 +68,7 @@ def test_wellfile_url(client):
     data = response.json()
     assert "primary_url" in data
     assert "fallback_url" in data
-    assert "bogapps.dnrc.mt.gov" in data["primary_url"]
+    assert "bogfiles.dnrc.mt.gov" in data["primary_url"]
     assert "storage.googleapis.com" in data["fallback_url"]
     assert api.strip()[:10] in data["primary_url"]
 
