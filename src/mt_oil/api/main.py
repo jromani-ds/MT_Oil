@@ -135,7 +135,9 @@ async def lifespan(app: FastAPI):
         if use_bq:
             fmtn_map = raw_well[["API_WellNo", "Formation"]].set_index("API_WellNo")
             db.well_df = db.well_df.join(fmtn_map)
-            db.well_df["Formation"] = db.well_df["Formation"].fillna("Unknown")
+            db.well_df["Formation"] = (
+                db.well_df["Formation"].astype(object).fillna("Unknown")
+            )
             db.well_df = db.well_df.rename(columns={"Formation": "ST_FMTN_CD"})
         else:
             prod_reset = db.prod_df.reset_index()

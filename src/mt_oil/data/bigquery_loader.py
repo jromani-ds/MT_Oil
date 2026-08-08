@@ -45,7 +45,7 @@ class BigQueryDataLoader:
         FROM {self._table('wells')}
         ORDER BY api_wellno
         """
-        df = self.client.query(query).to_dataframe()
+        df = self.client.query(query).to_dataframe(create_bqstorage_client=False)
         df = df.rename(
             columns={
                 "api_wellno": "API_WellNo",
@@ -114,7 +114,7 @@ class BigQueryDataLoader:
         FROM {self._table('production_monthly')}
         WHERE bbls_oil_cond > 0 OR mcf_gas > 0
         """
-        df = self.client.query(query).to_dataframe()
+        df = self.client.query(query).to_dataframe(create_bqstorage_client=False)
         return set(df["api_wellno"].astype(str))
 
     def load_fracfocus(self) -> pd.DataFrame:
@@ -133,7 +133,7 @@ class BigQueryDataLoader:
             tvd
         FROM {self._table('frac_focus')}
         """
-        df = self.client.query(query).to_dataframe()
+        df = self.client.query(query).to_dataframe(create_bqstorage_client=False)
         df = df.rename(
             columns={
                 "api_wellno": "API_WellNo",
