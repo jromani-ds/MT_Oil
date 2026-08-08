@@ -4,7 +4,7 @@ These replace the local-tab-file loaders in deployed / cloud environments.
 Local file loaders are still available via `mt_oil.data.loader` for development.
 """
 
-from typing import Tuple
+from typing import Set, Tuple
 
 import pandas as pd
 from google.cloud import bigquery
@@ -68,14 +68,13 @@ class BigQueryDataLoader:
         df["API_WellNo"] = df["API_WellNo"].astype(str)
         return df
 
-    def load_production(self) -> pd.DataFrame:
-        """Load monthly well production data indexed by API_WellNo.
+    def load_production_for_well(self, api_number: str) -> pd.DataFrame:
+        """Load production history for a single well.
 
-        Returns a DataFrame with the same columns expected by the local loader.
+        Returns a DataFrame with columns matching the local loader format.
         """
         query = f"""
         SELECT
-            api_wellno,
             rpt_date,
             st_fmtn_cd,
             bbls_oil_cond,
@@ -83,12 +82,19 @@ class BigQueryDataLoader:
             bbls_wtr,
             days_prod
         FROM {self._table('production_monthly')}
-        ORDER BY api_wellno, rpt_date
+        WHERE api_wellno = @api_wellno
+        ORDER BY rpt_date
         """
-        df = self.client.query(query).to_dataframe()
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("api_wellno", "STRING", api_number)
+            ]
+        )
+        df = self.client.query(query, job_config=job_config).to_dataframe()
+        if df.empty:
+            return df
         df = df.rename(
             columns={
-                "api_wellno": "API_WellNo",
                 "rpt_date": "Rpt_Date",
                 "st_fmtn_cd": "ST_FMTN_CD",
                 "bbls_oil_cond": "BBLS_OIL_COND",
@@ -97,11 +103,19 @@ class BigQueryDataLoader:
                 "days_prod": "DAYS_PROD",
             }
         )
-        df["API_WellNo"] = df["API_WellNo"].astype(str)
+        df["API_WellNo"] = api_number
         df["Rpt_Date"] = pd.to_datetime(df["Rpt_Date"])
-        # Return columnar format matching the local .tab loader so the rest of
-        # the pipeline can stay unchanged.
         return df
+
+    def load_producing_wells_set(self) -> Set[str]:
+        """Load the set of API_WellNo that have any positive oil or gas production."""
+        query = f"""
+        SELECT DISTINCT api_wellno
+        FROM {self._table('production_monthly')}
+        WHERE bbls_oil_cond > 0 OR mcf_gas > 0
+        """
+        df = self.client.query(query).to_dataframe()
+        return set(df["api_wellno"].astype(str))
 
     def load_fracfocus(self) -> pd.DataFrame:
         """Load aggregated FracFocus completion data indexed by API_WellNo.
@@ -129,7 +143,6 @@ class BigQueryDataLoader:
             }
         )
         df["API_WellNo"] = df["API_WellNo"].astype(str)
-        # Provide the additional columns expected by merge_data/engineer_features.
         df["PercentHFJob"] = 100.0
         df["TotalBaseNonWaterVolume"] = 0.0
         df = df.set_index("API_WellNo")
@@ -147,7 +160,7 @@ class BigQueryDataLoader:
 
 def load_all_from_bigquery(
     project_id: str, dataset_id: str
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Convenience helper: returns (wells_df, production_df, fracfocus_df)."""
+) -> Tuple[pd.DataFrame, Set[str]]:
+    """Convenience helper: returns (wells_df, producing_wells_set)."""
     loader = BigQueryDataLoader(project_id, dataset_id)
-    return loader.load_wells(), loader.load_production(), loader.load_fracfocus()
+    return loader.load_wells(), loader.load_producing_wells_set()
