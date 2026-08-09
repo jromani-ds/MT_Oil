@@ -1,7 +1,7 @@
 import type { EconomicMetrics, Well, WellfileResponse } from '../api/client';
 import { DollarSign, Loader2 } from 'lucide-react';
-import { KpiCard } from './KpiCard';
 import { formatCurrency, formatMultiplier, formatDuration, formatVolume } from '../utils/format';
+import { KpiCard } from './KpiCard';
 
 interface EconParams {
   oilPrice: number;
@@ -75,17 +75,17 @@ export function Economics({
       <div className="w-full p-4 sm:p-6 lg:p-8">
         <div className="bg-white rounded-lg shadow-md border-l-4 border-green-500 p-4 sm:p-6 lg:p-8">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-200">
             <h3 className="font-bold text-2xl flex items-center gap-2 text-gray-800">
               <DollarSign className="w-8 h-8 text-green-600" /> Economics Analysis
             </h3>
-            <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-2">
+            <div className="flex items-center gap-3">
               {wellfileUrl && (
                 <a
                   href={wellfileUrl.primary_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm transition-colors shadow-sm flex items-center gap-2 min-w-[140px] justify-center"
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 cursor-pointer"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -95,7 +95,7 @@ export function Economics({
               )}
               <button
                 onClick={onRecalculate}
-                className="text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm transition-colors shadow-sm min-w-[140px] justify-center flex items-center gap-2"
+                className="px-4 py-2 bg-green-600 text-white font-medium text-sm rounded-md hover:bg-green-700 transition-colors"
               >
                 Recalculate
               </button>
@@ -132,9 +132,9 @@ export function Economics({
             <h4 className="text-lg font-semibold text-gray-700 mb-4">
               Economic Assumptions
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="flex flex-col">
-                <label className="text-sm text-gray-600 mb-2 font-medium" htmlFor="oil-price">Oil Price ($/bbl)</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-700" htmlFor="oil-price">Oil Price ($/bbl)</label>
                 <input
                   id="oil-price"
                   type="number"
@@ -142,11 +142,11 @@ export function Economics({
                   step={0.5}
                   value={econParams.oilPrice}
                   onChange={(e) => onParamChange({ ...econParams, oilPrice: parseFloat(e.target.value) || 0 })}
-                  className="border border-gray-300 rounded px-3 py-2 text-gray-700 focus:ring-2 focus:ring-green-500 outline-none"
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500"
                 />
               </div>
-              <div className="flex flex-col">
-                <label className="text-sm text-gray-600 mb-2 font-medium" htmlFor="capex">CAPEX ($MM)</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-700" htmlFor="capex">CAPEX ($MM)</label>
                 <input
                   id="capex"
                   type="number"
@@ -154,11 +154,11 @@ export function Economics({
                   step={0.1}
                   value={econParams.capex}
                   onChange={(e) => onParamChange({ ...econParams, capex: parseFloat(e.target.value) || 0 })}
-                  className="border border-gray-300 rounded px-3 py-2 text-gray-700 focus:ring-2 focus:ring-green-500 outline-none"
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500"
                 />
               </div>
-              <div className="flex flex-col">
-                <label className="text-sm text-gray-600 mb-2 font-medium" htmlFor="discount-rate">Discount Rate (%)</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-700" htmlFor="discount-rate">Discount Rate (%)</label>
                 <input
                   id="discount-rate"
                   type="number"
@@ -167,11 +167,11 @@ export function Economics({
                   step={0.5}
                   value={econParams.discount}
                   onChange={(e) => onParamChange({ ...econParams, discount: parseFloat(e.target.value) || 0 })}
-                  className="border border-gray-300 rounded px-3 py-2 text-gray-700 focus:ring-2 focus:ring-green-500 outline-none"
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500"
                 />
               </div>
-              <div className="flex flex-col">
-                <label className="text-sm text-gray-600 mb-2 font-medium" htmlFor="opex">OPEX ($/bbl)</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-700" htmlFor="opex">OPEX ($/bbl)</label>
                 <input
                   id="opex"
                   type="number"
@@ -179,11 +179,11 @@ export function Economics({
                   step={0.5}
                   value={econParams.opex}
                   onChange={(e) => onParamChange({ ...econParams, opex: parseFloat(e.target.value) || 0 })}
-                  className="border border-gray-300 rounded px-3 py-2 text-gray-700 focus:ring-2 focus:ring-green-500 outline-none"
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500"
                 />
               </div>
-              <div className="flex flex-col">
-                <label className="text-sm text-gray-600 mb-2 font-medium" htmlFor="abandonment">Abandonment Rate (bbl/day)</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-700" htmlFor="abandonment">Abandonment Rate (bbl/day)</label>
                 <input
                   id="abandonment"
                   type="number"
@@ -191,7 +191,7 @@ export function Economics({
                   step={0.5}
                   value={econParams.abandonment}
                   onChange={(e) => onParamChange({ ...econParams, abandonment: parseFloat(e.target.value) || 0 })}
-                  className="border border-gray-300 rounded px-3 py-2 text-gray-700 focus:ring-2 focus:ring-green-500 outline-none"
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500"
                 />
               </div>
             </div>

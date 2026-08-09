@@ -171,6 +171,7 @@ export function Dashboard() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
+                                data-testid={`tab-${tab.id}`}
                                 className={`flex items-center gap-2 px-3 sm:px-6 py-2 sm:py-3 font-medium transition-colors border-b-2 ${
                                     activeTab === tab.id
                                         ? 'border-blue-600 text-blue-600'

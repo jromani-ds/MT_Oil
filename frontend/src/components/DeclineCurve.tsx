@@ -34,18 +34,10 @@ function getYearTicks(data: ChartPoint[]): number[] {
   const years = new Set<number>();
   for (const d of data) {
     const year = new Date(d.dateVal).getFullYear();
-    if (!years.has(year)) {
-      years.add(year);
-      // push the midpoint of the year to avoid edge ambiguity
-      const midYear = new Date(year, 6, 1).getTime();
-      // only add if it falls within the data range
-      if (midYear >= data[0].dateVal && midYear <= data[data.length - 1].dateVal) {
-        years.delete(year);
-        years.add(midYear);
-      }
-    }
+    years.add(year);
   }
-  return Array.from(years).sort((a, b) => a - b);
+  return Array.from(years).sort((a, b) => a - b).map(y => new Date(y, 6, 1).getTime())
+    .filter(t => t >= data[0]?.dateVal && t <= data[data.length - 1]?.dateVal);
 }
 
 interface DeclineCurveProps {
@@ -102,14 +94,16 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
       {/* Chart */}
       <div className="flex-1 bg-white shadow-md flex flex-col m-4 rounded-lg overflow-hidden">
         <div className="flex justify-between items-center px-4 py-3 flex-shrink-0 border-b border-gray-100">
-          <h3 className="font-semibold text-lg text-gray-700 flex items-center gap-2">
-            <Activity className="w-5 h-5" /> Production Profile
+          <div className="flex items-center gap-3">
+            <h3 className="font-semibold text-lg text-gray-700 flex items-center gap-2">
+              <Activity className="w-5 h-5" /> Production Profile
+            </h3>
             {prediction && (
-              <span className="ml-1 bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">
+              <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">
                 DCA Method: {prediction.fit.method}
               </span>
             )}
-          </h3>
+          </div>
           <div className="flex gap-4 text-xs font-medium">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 bg-blue-500 rounded-sm"></div> Historical
@@ -121,8 +115,8 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
         </div>
 
         {production.length > 0 ? (
-          <div className="flex-1 w-full p-2">
-            <ResponsiveContainer width="100%" height="100%">
+           <div className="flex-1 w-full p-2">
+             <ResponsiveContainer width="100%" height={400}>
               <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
                 <XAxis
@@ -136,8 +130,9 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
                 />
                 <YAxis
                   tickFormatter={(v) => {
-                    const k = v / 1000;
-                    return k < 10 ? k.toFixed(1) + 'k' : k.toFixed(0) + 'k';
+                    if (v === 0) return '0k';
+                    const val = v / 1000;
+                    return val % 1 === 0 ? `${val}k` : `${val.toFixed(1)}k`;
                   }}
                   label={{ value: 'Oil (bbl/month)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
                 />

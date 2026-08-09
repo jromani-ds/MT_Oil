@@ -28,7 +28,7 @@ export function MapSidebar({
   onToggleGisLayer,
 }: MapSidebarProps) {
   return (
-    <div className="w-72 lg:w-80 p-4 flex flex-col gap-4 overflow-y-auto border-r border-gray-200 bg-white min-h-0">
+    <div id="map-sidebar" className="w-72 lg:w-80 p-4 flex flex-col gap-4 overflow-y-auto border-r border-gray-200 bg-white min-h-0">
       {/* Filters Card */}
       <div className="bg-gray-50 rounded-lg shadow-sm p-4 border border-gray-200">
         <div
@@ -38,7 +38,7 @@ className="flex justify-between items-center cursor-pointer mb-2 pr-3"
           <h3 className="font-bold text-gray-700 flex items-center gap-2">
             <Filter className="w-4 h-4" /> Filter Wells
           </h3>
-          <span className="text-xs text-gray-400">{showFilters ? 'Hide' : 'Show'}</span>
+            <button type="button" className="px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors">{showFilters ? 'Hide' : 'Show'}</button>
         </div>
 
         {showFilters && filterOptions && (
