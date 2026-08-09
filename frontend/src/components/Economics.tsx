@@ -1,6 +1,7 @@
 import type { EconomicMetrics, Well, WellfileResponse } from '../api/client';
 import { DollarSign, Loader2 } from 'lucide-react';
 import { formatCurrency, formatMultiplier, formatDuration, formatVolume } from '../utils/format';
+import { KpiCard } from './KpiCard';
 
 interface EconParams {
   oilPrice: number;
@@ -102,23 +103,28 @@ export function Economics({
           </div>
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">NPV (10%)</span>
-              <span className="text-2xl font-bold text-gray-900 mt-2">{formatCurrency(economics.NPV)}</span>
-            </div>
-            <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">ROI</span>
-              <span className="text-2xl font-bold text-gray-900 mt-2">{formatMultiplier(economics.ROI)}</span>
-            </div>
-            <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Payout Period</span>
-              <span className="text-2xl font-bold text-gray-900 mt-2">{formatDuration(economics.Payout_Months)}</span>
-            </div>
-            <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">EUR</span>
-              <span className="text-2xl font-bold text-gray-900 mt-2">{formatVolume(economics.EUR)}</span>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <KpiCard
+              label="NPV (10%)"
+              value={formatCurrency(economics.NPV)}
+              colorScheme="green"
+              negative={economics.NPV < 0}
+            />
+            <KpiCard
+              label="ROI"
+              value={formatMultiplier(economics.ROI)}
+              colorScheme="blue"
+            />
+            <KpiCard
+              label="Payout Period"
+              value={formatDuration(economics.Payout_Months)}
+              colorScheme="purple"
+            />
+            <KpiCard
+              label="EUR"
+              value={formatVolume(economics.EUR)}
+              colorScheme="orange"
+            />
           </div>
 
           {/* Economic Assumptions */}

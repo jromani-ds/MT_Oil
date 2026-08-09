@@ -32,7 +32,7 @@ export function MapSidebar({
       {/* Filters Card */}
       <div className="bg-gray-50 rounded-lg shadow-sm p-4 border border-gray-200">
         <div
-className="flex justify-between items-center cursor-pointer mb-2 pr-4"
+className="flex justify-between items-center cursor-pointer mb-2 pr-3"
           onClick={onToggleFilters}
         >
           <h3 className="font-bold text-gray-700 flex items-center gap-2">
@@ -42,9 +42,9 @@ className="flex justify-between items-center cursor-pointer mb-2 pr-4"
         </div>
 
         {showFilters && filterOptions && (
-          <div className="text-sm">
-            <div className="flex flex-col gap-1.5 mb-4">
-              <label className="text-sm font-medium text-gray-700 mb-1" htmlFor="well-type">Well Type</label>
+          <div className="grid grid-cols-1 gap-3 text-sm">
+            <div>
+<label className="block text-xs font-semibold text-gray-500 mb-2" htmlFor="well-type">Well Type</label>
               <select
                 id="well-type"
                 className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-700 bg-white appearance-none"
@@ -55,8 +55,8 @@ className="flex justify-between items-center cursor-pointer mb-2 pr-4"
                 {filterOptions.well_types.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <div className="flex flex-col gap-1.5 mb-4">
-              <label className="text-sm font-medium text-gray-700 mb-1" htmlFor="formation">Formation</label>
+            <div>
+<label className="block text-xs font-semibold text-gray-500 mb-2" htmlFor="formation">Formation</label>
               <select
                 id="formation"
                 className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-700 bg-white appearance-none"
@@ -67,8 +67,8 @@ className="flex justify-between items-center cursor-pointer mb-2 pr-4"
                 {filterOptions.formations.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
-            <div className="flex flex-col gap-1.5 mb-4">
-              <label className="text-sm font-medium text-gray-700 mb-1" htmlFor="trajectory">Trajectory</label>
+            <div>
+<label className="block text-xs font-semibold text-gray-500 mb-2" htmlFor="trajectory">Trajectory</label>
               <select
                 id="trajectory"
                 className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-700 bg-white appearance-none"
