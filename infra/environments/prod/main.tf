@@ -89,6 +89,14 @@ module "gcs" {
   location    = var.gcs_location
   versioning  = true
   labels      = local.labels
+  cors = [
+    {
+      origin          = ["*"]
+      method          = ["GET", "HEAD", "OPTIONS"]
+      response_header = ["*"]
+      max_age_seconds = 3600
+    }
+  ]
 
   depends_on = [module.apis]
 }

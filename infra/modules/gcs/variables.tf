@@ -58,3 +58,14 @@ variable "website" {
   })
   default = null
 }
+
+variable "cors" {
+  description = "CORS configuration for the bucket"
+  type = list(object({
+    origin          = optional(list(string))
+    method          = optional(list(string))
+    response_header = optional(list(string))
+    max_age_seconds = optional(number)
+  }))
+  default = []
+}
