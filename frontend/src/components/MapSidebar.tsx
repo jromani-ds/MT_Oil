@@ -32,7 +32,7 @@ export function MapSidebar({
       {/* Filters Card */}
       <div className="bg-gray-50 rounded-lg shadow-sm p-4 border border-gray-200">
         <div
-          className="flex justify-between items-center cursor-pointer mb-2 pr-1"
+className="flex justify-between items-center cursor-pointer mb-2 pr-3"
           onClick={onToggleFilters}
         >
           <h3 className="font-bold text-gray-700 flex items-center gap-2">
@@ -44,7 +44,7 @@ export function MapSidebar({
         {showFilters && filterOptions && (
           <div className="grid grid-cols-1 gap-3 text-sm">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5" htmlFor="well-type">Well Type</label>
+<label className="block text-xs font-semibold text-gray-500 mb-2" htmlFor="well-type">Well Type</label>
               <select
                 id="well-type"
                 className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-700 bg-white appearance-none"
@@ -56,7 +56,7 @@ export function MapSidebar({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5" htmlFor="formation">Formation</label>
+<label className="block text-xs font-semibold text-gray-500 mb-2" htmlFor="formation">Formation</label>
               <select
                 id="formation"
                 className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-700 bg-white appearance-none"
@@ -68,7 +68,7 @@ export function MapSidebar({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5" htmlFor="trajectory">Trajectory</label>
+<label className="block text-xs font-semibold text-gray-500 mb-2" htmlFor="trajectory">Trajectory</label>
               <select
                 id="trajectory"
                 className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-700 bg-white appearance-none"

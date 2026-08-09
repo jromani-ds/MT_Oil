@@ -135,7 +135,10 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
                   tick={{ fontSize: 12 }}
                 />
                 <YAxis
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v) => {
+                    const k = v / 1000;
+                    return k < 10 ? k.toFixed(1) + 'k' : k.toFixed(0) + 'k';
+                  }}
                   label={{ value: 'Oil (bbl/month)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
                 />
                 <Tooltip
