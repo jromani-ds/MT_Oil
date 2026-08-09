@@ -79,13 +79,13 @@ export function Economics({
             <h3 className="font-bold text-2xl flex items-center gap-2 text-gray-800">
               <DollarSign className="w-8 h-8 text-green-600" /> Economics Analysis
             </h3>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-2">
               {wellfileUrl && (
                 <a
                   href={wellfileUrl.primary_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm transition-colors shadow-sm flex items-center gap-2"
+                  className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm transition-colors shadow-sm flex items-center gap-2 min-w-[140px] justify-center"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -95,7 +95,7 @@ export function Economics({
               )}
               <button
                 onClick={onRecalculate}
-                className="text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm transition-colors shadow-sm"
+                className="text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm transition-colors shadow-sm min-w-[140px] justify-center flex items-center gap-2"
               >
                 Recalculate
               </button>
@@ -182,7 +182,7 @@ export function Economics({
                   className="border border-gray-300 rounded px-3 py-2 text-gray-700 focus:ring-2 focus:ring-green-500 outline-none"
                 />
               </div>
-              <div className="flex flex-col lg:col-span-2">
+              <div className="flex flex-col">
                 <label className="text-sm text-gray-600 mb-2 font-medium" htmlFor="abandonment">Abandonment Rate (bbl/day)</label>
                 <input
                   id="abandonment"
