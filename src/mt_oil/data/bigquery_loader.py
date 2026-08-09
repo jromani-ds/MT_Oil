@@ -90,7 +90,9 @@ class BigQueryDataLoader:
                 bigquery.ScalarQueryParameter("api_wellno", "STRING", api_number)
             ]
         )
-        df = self.client.query(query, job_config=job_config).to_dataframe()
+        df = self.client.query(query, job_config=job_config).to_dataframe(
+            create_bqstorage_client=False
+        )
         if df.empty:
             return df
         df = df.rename(
