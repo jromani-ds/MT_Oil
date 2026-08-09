@@ -28,23 +28,23 @@ export function MapSidebar({
   onToggleGisLayer,
 }: MapSidebarProps) {
   return (
-    <div className="w-72 lg:w-80 p-4 flex flex-col gap-4 overflow-y-auto border-r border-gray-200 bg-white min-h-0">
+    <div id="map-sidebar" className="w-72 lg:w-80 p-4 flex flex-col gap-4 overflow-y-auto border-r border-gray-200 bg-white min-h-0">
       {/* Filters Card */}
       <div className="bg-gray-50 rounded-lg shadow-sm p-4 border border-gray-200">
         <div
-className="flex justify-between items-center cursor-pointer mb-2 pr-3"
+className="flex justify-between items-center cursor-pointer mb-2 pr-4"
           onClick={onToggleFilters}
         >
           <h3 className="font-bold text-gray-700 flex items-center gap-2">
             <Filter className="w-4 h-4" /> Filter Wells
           </h3>
-          <span className="text-xs text-gray-400">{showFilters ? 'Hide' : 'Show'}</span>
+            <button type="button" className="px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors">{showFilters ? 'Hide' : 'Show'}</button>
         </div>
 
         {showFilters && filterOptions && (
-          <div className="grid grid-cols-1 gap-3 text-sm">
-            <div>
-<label className="block text-xs font-semibold text-gray-500 mb-2" htmlFor="well-type">Well Type</label>
+          <div className="text-sm">
+            <div className="flex flex-col gap-1.5 mb-4">
+              <label className="text-sm font-medium text-gray-700 mb-1" htmlFor="well-type">Well Type</label>
               <select
                 id="well-type"
                 className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-700 bg-white appearance-none"
@@ -55,8 +55,8 @@ className="flex justify-between items-center cursor-pointer mb-2 pr-3"
                 {filterOptions.well_types.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <div>
-<label className="block text-xs font-semibold text-gray-500 mb-2" htmlFor="formation">Formation</label>
+            <div className="flex flex-col gap-1.5 mb-4">
+              <label className="text-sm font-medium text-gray-700 mb-1" htmlFor="formation">Formation</label>
               <select
                 id="formation"
                 className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-700 bg-white appearance-none"
@@ -67,8 +67,8 @@ className="flex justify-between items-center cursor-pointer mb-2 pr-3"
                 {filterOptions.formations.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
-            <div>
-<label className="block text-xs font-semibold text-gray-500 mb-2" htmlFor="trajectory">Trajectory</label>
+            <div className="flex flex-col gap-1.5 mb-4">
+              <label className="text-sm font-medium text-gray-700 mb-1" htmlFor="trajectory">Trajectory</label>
               <select
                 id="trajectory"
                 className="w-full border border-gray-300 rounded px-2 py-1.5 text-gray-700 bg-white appearance-none"
