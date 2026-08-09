@@ -50,8 +50,8 @@ export function MapComponent({ wells, selectedWell, onSelectWell, gisLayers }: M
                 >
                     <Popup>
                         <strong>API: {well.API_WellNo}</strong><br />
-                        Lat: {well.Lat}<br />
-                        Long: {well.Long}
+                        Lat: {well.Lat.toFixed(4)}<br />
+                        Long: {well.Long.toFixed(4)}
                     </Popup>
                 </CircleMarker>
             ))}
