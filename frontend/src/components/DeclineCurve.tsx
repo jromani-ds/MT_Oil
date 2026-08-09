@@ -109,7 +109,10 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
               <div className="w-3 h-3 bg-blue-500 rounded-sm"></div> Historical
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 border-b-2 border-orange-500 border-dashed"></div> Forecast
+              <svg className="w-4 h-3" viewBox="0 0 16 12">
+                <line x1="0" y1="6" x2="16" y2="6" stroke="#f97316" strokeWidth="3" strokeDasharray="4 2" />
+              </svg>
+              Forecast
             </div>
           </div>
         </div>
