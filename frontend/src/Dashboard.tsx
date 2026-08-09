@@ -300,7 +300,7 @@ if (prod.length > 12) {
                         {/* Map */}
                         <div className="flex-1">
                             <div className="bg-white h-full overflow-hidden">
-                                <MapComponent wells={wells} selectedWell={selectedWell} onSelectWell={handleSelectWell} gisLayers={gisLayers} />
+                                <MapComponent wells={wells} selectedWell={selectedWell} onSelectWell={setSelectedWell} gisLayers={gisLayers} />
                             </div>
                         </div>
                     </div>
