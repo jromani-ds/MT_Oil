@@ -116,7 +116,7 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
 
         {production.length > 0 ? (
            <div className="flex-1 w-full p-2">
-             <ResponsiveContainer width="100%" height={400}>
+             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
                 <XAxis
