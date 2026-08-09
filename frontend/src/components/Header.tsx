@@ -11,7 +11,7 @@ export function Header({ wellCount }: HeaderProps) {
         <Terminal className="w-6 h-6 shrink-0" />
         <span>MT Oil Analytics</span>
       </h1>
-      <div className="text-sm text-gray-400 shrink-0">
+      <div className="text-sm text-gray-400 shrink-0 overflow-hidden text-ellipsis whitespace-nowrap max-w-[50%]">
         {wellCount.toLocaleString()} wells loaded
       </div>
     </header>

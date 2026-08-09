@@ -31,7 +31,7 @@ const colorClasses: Record<string, { bg: string; label: string; value: string }>
 export function KpiCard({ label, value, colorScheme, negative }: KpiCardProps) {
   const colors = colorClasses[colorScheme];
   return (
-    <div className={`${colors.bg} p-6 rounded-lg`}>
+    <div className={`${colors.bg} p-6 rounded-lg border border-gray-200/60`}>
       <p className={`text-gray-600 text-sm uppercase tracking-wider font-semibold mb-2`}>{label}</p>
       <p
         className={`text-3xl sm:text-4xl font-mono font-bold ${

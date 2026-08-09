@@ -49,7 +49,7 @@ export function LayerToggle({ layers, onToggle, featureCounts }: LayerToggleProp
                     )}
                 </div>
                 <svg
-                    className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+                    className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"

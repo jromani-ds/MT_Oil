@@ -30,6 +30,24 @@ function buildChartData(production: ProductionRecord[], prediction: DeclineRespo
   return data;
 }
 
+function getYearTicks(data: ChartPoint[]): number[] {
+  const years = new Set<number>();
+  for (const d of data) {
+    const year = new Date(d.dateVal).getFullYear();
+    if (!years.has(year)) {
+      years.add(year);
+      // push the midpoint of the year to avoid edge ambiguity
+      const midYear = new Date(year, 6, 1).getTime();
+      // only add if it falls within the data range
+      if (midYear >= data[0].dateVal && midYear <= data[data.length - 1].dateVal) {
+        years.delete(year);
+        years.add(midYear);
+      }
+    }
+  }
+  return Array.from(years).sort((a, b) => a - b);
+}
+
 interface DeclineCurveProps {
   selectedWell: Well | null;
   loading: boolean;
@@ -65,6 +83,7 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
   }
 
   const chartData = buildChartData(production, prediction);
+  const yearTicks = getYearTicks(chartData);
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col">
@@ -86,7 +105,7 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
           <h3 className="font-semibold text-lg text-gray-700 flex items-center gap-2">
             <Activity className="w-5 h-5" /> Production Profile
             {prediction && (
-              <span className="ml-3 bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">
+              <span className="ml-1 bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">
                 DCA Method: {prediction.fit.method}
               </span>
             )}
@@ -111,9 +130,8 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
                   type="number"
                   scale="time"
                   domain={['dataMin', 'dataMax']}
+                  ticks={yearTicks}
                   tickFormatter={formatYear}
-                  interval="preserveStartEnd"
-                  minTickGap={50}
                   tick={{ fontSize: 12 }}
                 />
                 <YAxis
