@@ -57,3 +57,22 @@ def test_production_history(client):
             assert "NPV" in r_econ.json()
     else:
         pytest.skip("No well with sufficient production found in sample")
+
+
+def test_wellfile_url(client):
+    wells = client.get("/wells?limit=1").json()
+    api = wells[0]["API_WellNo"]
+
+    response = client.get(f"/wells/{api}/wellfile")
+    assert response.status_code == 200
+    data = response.json()
+    assert "primary_url" in data
+    assert "fallback_url" in data
+    assert "bogfiles.dnrc.mt.gov" in data["primary_url"]
+    assert "storage.googleapis.com" in data["fallback_url"]
+    assert api.strip()[:10] in data["primary_url"]
+
+
+def test_wellfile_url_unknown_well(client):
+    response = client.get("/wells/9999999999/wellfile")
+    assert response.status_code == 404

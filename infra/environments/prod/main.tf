@@ -89,6 +89,14 @@ module "gcs" {
   location    = var.gcs_location
   versioning  = true
   labels      = local.labels
+  cors = [
+    {
+      origin          = ["*"]
+      method          = ["GET", "HEAD", "OPTIONS"]
+      response_header = ["*"]
+      max_age_seconds = 3600
+    }
+  ]
 
   depends_on = [module.apis]
 }
@@ -159,15 +167,16 @@ module "cloud_run" {
   allow_unauthenticated = true
 
   env_vars = {
-    ENVIRONMENT       = local.env
-    GCP_PROJECT_ID    = var.project_id
-    GCS_DATA_BUCKET   = module.gcs.bucket_name
-    BIGQUERY_DATASET  = module.bigquery.dataset_id
-    FRONTEND_URL      = module.frontend_gcs.website_url
-    CORS_ORIGINS      = module.frontend_gcs.website_url
-    MODEL_PATH        = "gs://${module.gcs.bucket_name}/models/rf_model.joblib"
-    ENABLE_LOCAL_DATA = "false"
-    LOG_LEVEL         = "info"
+    ENVIRONMENT                 = local.env
+    GCP_PROJECT_ID              = var.project_id
+    GCS_DATA_BUCKET             = module.gcs.bucket_name
+    BIGQUERY_DATASET            = module.bigquery.dataset_id
+    FRONTEND_URL                = module.frontend_gcs.website_url
+    CORS_ORIGINS                = module.frontend_gcs.website_url
+    MODEL_PATH                  = "gs://${module.gcs.bucket_name}/models/rf_model.joblib"
+    ENABLE_LOCAL_DATA           = "false"
+    LOG_LEVEL                   = "info"
+    WELLFILE_STATE_URL_TEMPLATE = "https://bogfiles.dnrc.mt.gov/Well_Data/{api_number}/{api_number}.pdf"
   }
 
   labels = local.labels

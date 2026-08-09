@@ -63,6 +63,11 @@ export interface FilterParams {
     slant?: string;
 }
 
+export interface WellfileResponse {
+    primary_url: string;
+    fallback_url: string;
+}
+
 export const getFilterOptions = async (): Promise<FilterOptions> => {
     const response = await api.get<FilterOptions>('/filters');
     return response.data;
@@ -113,5 +118,10 @@ export const runEconomics = async (
             abandonment_rate_daily: abandonmentRate
         }
     });
+    return response.data;
+};
+
+export const getWellfileUrl = async (apiNumber: string): Promise<WellfileResponse> => {
+    const response = await api.get<WellfileResponse>(`/wells/${apiNumber}/wellfile`);
     return response.data;
 };
