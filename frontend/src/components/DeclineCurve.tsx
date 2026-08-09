@@ -105,7 +105,7 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
           <h3 className="font-semibold text-lg text-gray-700 flex items-center gap-2">
             <Activity className="w-5 h-5" /> Production Profile
             {prediction && (
-              <span className="ml-3 bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">
+              <span className="ml-1 bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wide">
                 DCA Method: {prediction.fit.method}
               </span>
             )}
