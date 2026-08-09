@@ -1,19 +1,10 @@
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Well } from './api/client';
 import './Map.css';
 import { useEffect } from 'react';
 import { GisLayers } from './GisLayers';
 import type { GisLayerState } from './GisLayers';
-
-// Fix for default markers in React Leaflet
-const defaultIcon = L.divIcon({
-  className: 'custom-marker',
-  html: '<div style="background-color: blue; width: 10px; height: 10px; border-radius: 50%;"></div>',
-  iconSize: [10, 10],
-  iconAnchor: [5, 5],
-});
 
 interface MapProps {
     wells: Well[];
@@ -44,10 +35,15 @@ export function MapComponent({ wells, selectedWell, onSelectWell, gisLayers }: M
             />
 
             {wells.map((well) => (
-                <Marker
+                <CircleMarker
                     key={well.API_WellNo}
-                    position={[well.Lat, well.Long]}
-                    icon={defaultIcon}
+                    center={[well.Lat, well.Long]}
+                    pathOptions={{
+                        color: selectedWell?.API_WellNo === well.API_WellNo ? 'red' : 'blue',
+                        fillColor: selectedWell?.API_WellNo === well.API_WellNo ? '#ff0000' : '#0000ff',
+                        fillOpacity: 0.6
+                    }}
+                    radius={selectedWell?.API_WellNo === well.API_WellNo ? 8 : 4}
                     eventHandlers={{
                         click: () => onSelectWell(well),
                     }}
@@ -57,7 +53,7 @@ export function MapComponent({ wells, selectedWell, onSelectWell, gisLayers }: M
                         Lat: {well.Lat.toFixed(4)}<br />
                         Long: {well.Long.toFixed(4)}
                     </Popup>
-                </Marker>
+                </CircleMarker>
             ))}
 
             <GisLayers visible={gisLayers} />
