@@ -104,7 +104,7 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
               </span>
             )}
           </div>
-          <div className="flex gap-6 text-sm font-medium">
+          <div className="flex flex-col gap-1 text-sm font-medium">
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 bg-blue-600 rounded-sm border border-blue-700 shadow-sm"></div>
               <span className="text-gray-700">Historical</span>
