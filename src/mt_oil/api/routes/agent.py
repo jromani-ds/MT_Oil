@@ -86,7 +86,7 @@ async def process_wellfile(request: Request, body: WellfileAgentRequest):
         parts=[types.Part(text=f"Analyze wellfile data for API number {api_number}")],
     )
 
-    session = _session_service.create_session(
+    session = await _session_service.create_session(
         app_name="wellfile_agent",
         user_id="api",
     )
