@@ -141,3 +141,37 @@ resource "google_bigquery_table" "pdf_fetch_status" {
     ignore_changes = [schema]
   }
 }
+
+resource "google_bigquery_table" "wellfile_parsed_metadata" {
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "wellfile_parsed_metadata"
+  project             = var.project_id
+  deletion_protection = true
+
+  time_partitioning {
+    type  = "MONTH"
+    field = "extracted_at"
+  }
+
+  clustering = ["api_number"]
+
+  schema = jsonencode([
+    { name = "api_number", type = "STRING", mode = "REQUIRED" },
+    { name = "well_name", type = "STRING", mode = "NULLABLE" },
+    { name = "tvd_ft", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "md_ft", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "lateral_length_ft", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "total_clean_fluid_bbls", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "total_proppant_lbs", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "max_treating_pressure_psi", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "casing_intermediate_depth_ft", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "extraction_status", type = "STRING", mode = "REQUIRED" },
+    { name = "extracted_at", type = "TIMESTAMP", mode = "REQUIRED" },
+    { name = "gcs_uri", type = "STRING", mode = "NULLABLE" },
+    { name = "input_tokens", type = "INT64", mode = "NULLABLE" },
+    { name = "output_tokens", type = "INT64", mode = "NULLABLE" },
+    { name = "latency_ms", type = "FLOAT64", mode = "NULLABLE" },
+  ])
+
+  depends_on = [google_bigquery_dataset.this]
+}

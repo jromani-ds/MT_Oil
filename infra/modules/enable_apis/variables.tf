@@ -19,5 +19,6 @@ variable "apis" {
     "logging.googleapis.com",
     "billingbudgets.googleapis.com",
     "appengine.googleapis.com",
+    "aiplatform.googleapis.com",
   ]
 }
