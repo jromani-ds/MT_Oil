@@ -106,11 +106,11 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
           </div>
           <div className="flex flex-col gap-2 text-xl font-medium">
             <div className="flex items-center gap-3">
-              <div className="w-20 h-20 bg-blue-600 rounded border border-blue-700 shadow-sm"></div>
+              <div className="w-10 h-10 bg-blue-600 rounded border border-blue-700 shadow-sm"></div>
               <span className="text-gray-700">Historical</span>
             </div>
             <div className="flex items-center gap-3">
-              <svg className="w-32 h-20" viewBox="0 0 128 80">
+              <svg className="w-16 h-10" viewBox="0 0 128 80">
                 <line x1="0" y1="40" x2="128" y2="40" stroke="#f97316" strokeWidth="16" strokeDasharray="24 12" />
               </svg>
               <span className="text-gray-700">Forecast</span>
