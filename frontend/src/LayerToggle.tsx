@@ -49,7 +49,7 @@ export function LayerToggle({ layers, onToggle, featureCounts }: LayerToggleProp
                     )}
                 </div>
                 <svg
-                    className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+                    className={`w-5 h-5 min-w-[20px] min-h-[20px] text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -66,7 +66,7 @@ export function LayerToggle({ layers, onToggle, featureCounts }: LayerToggleProp
                     {LAYER_DEFS.map(({ key, label, color, description }) => {
                         const active = layers[key];
                         return (
-                            <button
+                             <button
                                 key={key}
                                 onClick={() => onToggle(key)}
                                 className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 text-left relative overflow-hidden ${active
@@ -81,42 +81,34 @@ export function LayerToggle({ layers, onToggle, featureCounts }: LayerToggleProp
                                         style={{ backgroundColor: color }}
                                     />
                                 )}
-                                <div className="flex-1 min-w-0 pl-1">
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all duration-300 ${active ? '' : 'grayscale opacity-30'}`}
-                                            style={{ backgroundColor: color }}
-                                        />
-                                        <span
-                                            className={`text-sm transition-all duration-200 ${active ? 'font-bold text-gray-900' : 'font-medium text-gray-400'}`}
-                                        >
-                                            {label}
+                                <div className="flex justify-between items-center w-full py-2">
+                                      <div className="flex flex-col pr-2 min-w-0 max-w-[60%]">
+                                        <span className={`text-sm transition-all duration-200 truncate ${active ? 'font-bold text-gray-900' : 'font-medium text-gray-400'}`}>
+                                          {label}
                                         </span>
-                                    </div>
-                                    <p
-                                        className={`text-[11px] mt-0.5 transition-all duration-200 ${active ? 'text-gray-500' : 'text-gray-300'}`}
-                                    >
-                                        {description}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2.5">
-                                    <div
-                                        className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md transition-all duration-200 ${active
-                                            ? 'text-gray-600 bg-gray-100/80'
-                                            : 'text-gray-300 bg-transparent'
-                                            }`}
-                                    >
-                                        {featureCounts[key] !== undefined
-                                            ? featureCounts[key].toLocaleString()
-                                            : <Loader2 className="w-3 h-3 animate-spin" />}
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        {active ? (
-                                            <Eye className="w-3.5 h-3.5 text-gray-400" />
-                                        ) : (
-                                            <EyeOff className="w-3.5 h-3.5 text-gray-300" />
-                                        )}
-                                        <Toggle enabled={active} color={color} />
+                                        <p className={`text-[11px] mt-0.5 transition-all duration-200 truncate ${active ? 'text-gray-500' : 'text-gray-300'}`}>
+                                          {description}
+                                        </p>
+                                      </div>
+                                    <div className="flex items-center gap-2.5 shrink-0">
+                                        <div
+                                            className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded-md transition-all duration-200 ${active
+                                                ? 'text-gray-600 bg-gray-100/80'
+                                                : 'text-gray-300 bg-transparent'
+                                                }`}
+                                        >
+                                            {featureCounts[key] !== undefined
+                                                ? featureCounts[key].toLocaleString()
+                                                : <Loader2 className="w-3 h-3 animate-spin" />}
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            {active ? (
+                                                <Eye className="w-3.5 h-3.5 text-gray-400" />
+                                            ) : (
+                                                <EyeOff className="w-3.5 h-3.5 text-gray-300" />
+                                            )}
+                                            <Toggle enabled={active} color={color} />
+                                        </div>
                                     </div>
                                 </div>
                             </button>
