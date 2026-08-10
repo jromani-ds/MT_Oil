@@ -39,6 +39,9 @@ class Settings:
     skip_data_load: bool
     rate_limit: str
     wellfile_state_url_template: str
+    vertex_ai_location: str
+    vertex_ai_model: str
+    wellfile_parsed_table: str
 
 
 def _split_cors(raw: Optional[str], frontend_url: Optional[str]) -> List[str]:
@@ -89,6 +92,11 @@ def load_settings() -> Settings:
         wellfile_state_url_template=os.getenv(
             "WELLFILE_STATE_URL_TEMPLATE",
             "https://bogfiles.dnrc.mt.gov/Well_Data/{api_number}/{api_number}.pdf",
+        ),
+        vertex_ai_location=os.getenv("VERTEX_AI_LOCATION", "us-central1"),
+        vertex_ai_model=os.getenv("VERTEX_AI_MODEL", "gemini-2.5-flash-lite"),
+        wellfile_parsed_table=os.getenv(
+            "WELLFILE_PARSED_TABLE", "wellfile_parsed_metadata"
         ),
     )
 

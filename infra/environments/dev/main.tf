@@ -79,6 +79,12 @@ resource "google_project_iam_member" "runtime_log_writer" {
   member  = "serviceAccount:${google_service_account.runtime.email}"
 }
 
+resource "google_project_iam_member" "runtime_vertex_ai" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.runtime.email}"
+}
+
 module "apis" {
   source     = "../../modules/enable_apis"
   project_id = var.project_id
@@ -180,6 +186,8 @@ module "cloud_run" {
     ENABLE_LOCAL_DATA           = "false"
     LOG_LEVEL                   = "info"
     WELLFILE_STATE_URL_TEMPLATE = "https://bogfiles.dnrc.mt.gov/Well_Data/{api_number}/{api_number}.pdf"
+    VERTEX_AI_LOCATION          = var.region
+    VERTEX_AI_MODEL             = "gemini-2.5-flash-lite"
   }
 
   labels = local.labels
