@@ -38,6 +38,7 @@ dependencies = [
 fracfocus-update = "mt_oil.jobs.fracfocus_update:main"
 pdf-fetch = "mt_oil.jobs.pdf_fetch:main"
 gis-update = "mt_oil.jobs.gis_update:main"
+batch-extract-wellfiles = "mt_oil.jobs.batch_wellfile_extraction:main"
 
 [project.optional-dependencies]
 dev = [

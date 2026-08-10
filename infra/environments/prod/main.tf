@@ -222,6 +222,37 @@ module "fracfocus_job" {
   depends_on = [module.gcs, module.bigquery]
 }
 
+module "batch_wellfile_extraction_job" {
+  source     = "../../modules/cloud_run_job"
+  project_id = var.project_id
+  region     = var.region
+
+  job_name              = "mt-oil-batch-extract-${local.env}"
+  image                 = var.api_image
+  service_account_email = google_service_account.runtime.email
+  memory                = "2Gi"
+  cpu                   = "1"
+  timeout_seconds       = 14400
+  max_retries           = 0
+
+  env_vars = {
+    ENVIRONMENT               = local.env
+    GCP_PROJECT_ID            = var.project_id
+    GCS_DATA_BUCKET           = module.gcs.bucket_name
+    BIGQUERY_DATASET          = module.bigquery.dataset_id
+    VERTEX_AI_LOCATION        = var.region
+    VERTEX_AI_MODEL           = "gemini-2.5-flash-lite"
+    GOOGLE_GENAI_USE_VERTEXAI = "true"
+  }
+
+  command = ["python"]
+  args    = ["-m", "mt_oil.jobs.batch_wellfile_extraction"]
+
+  labels = local.labels
+
+  depends_on = [module.gcs, module.bigquery]
+}
+
 module "fracfocus_scheduler" {
   source     = "../../modules/cloud_scheduler"
   project_id = var.project_id
