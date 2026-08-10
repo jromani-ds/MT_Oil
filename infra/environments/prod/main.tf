@@ -185,6 +185,7 @@ module "cloud_run" {
     WELLFILE_STATE_URL_TEMPLATE = "https://bogfiles.dnrc.mt.gov/Well_Data/{api_number}/{api_number}.pdf"
     VERTEX_AI_LOCATION          = var.region
     VERTEX_AI_MODEL             = "gemini-2.5-flash-lite"
+    GOOGLE_GENAI_USE_VERTEX_AI  = "true"
   }
 
   labels = local.labels
