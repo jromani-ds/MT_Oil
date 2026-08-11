@@ -25,7 +25,7 @@ from google.cloud import bigquery, storage
 
 from mt_oil.agents.tools.document import (
     _check_bq_cache,
-    _extract_with_gemini,
+    _extract_with_retry,
     _gcs_uri as doc_gcs_uri,
     _read_pdf_from_gcs,
     _write_to_bq,
@@ -204,7 +204,7 @@ def _extraction_phase(target_api_numbers: list[str]) -> None:
         timer = Timer()
         timer.__enter__()
         try:
-            specs = _extract_with_gemini(api, pdf_bytes)
+            specs = _extract_with_retry(api, pdf_bytes)
             specs["extraction_status"] = "SUCCESS"
             timer.__exit__()
             emit_agent_telemetry(
