@@ -235,7 +235,7 @@ module "batch_wellfile_extraction_job" {
   service_account_email = google_service_account.runtime.email
   memory                = "8Gi"
   cpu                   = "2"
-  timeout_seconds       = 14400
+  timeout_seconds       = 64800
   max_retries           = 0
 
   env_vars = {
