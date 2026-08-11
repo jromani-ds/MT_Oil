@@ -233,8 +233,8 @@ module "batch_wellfile_extraction_job" {
   job_name              = "mt-oil-batch-extract-${local.env}"
   image                 = var.api_image
   service_account_email = google_service_account.runtime.email
-  memory                = "2Gi"
-  cpu                   = "1"
+  memory                = "8Gi"
+  cpu                   = "2"
   timeout_seconds       = 14400
   max_retries           = 0
 
