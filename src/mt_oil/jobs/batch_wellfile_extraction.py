@@ -11,6 +11,7 @@ Usage:
 
 from __future__ import annotations
 
+import gc
 import logging
 import os
 import sys
@@ -224,6 +225,9 @@ def _extraction_phase(target_api_numbers: list[str]) -> None:
             timer.__exit__()
             print(f"  [{idx}/{len(needing)}] Error extracting {api}: {e}")
             errors += 1
+        finally:
+            del pdf_bytes
+            gc.collect()
 
         if idx % LOG_INTERVAL == 0:
             elapsed = time.time() - start_time
