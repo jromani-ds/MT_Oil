@@ -158,6 +158,55 @@ class TestIntensityComputation:
         assert fluid is None
 
 
+class TestProductionSummaryBuilder:
+    def test_full_data(self):
+        from mt_oil.api.routes.agent import _build_production_summary
+
+        prod = {
+            "total_months": 24,
+            "peak_oil_bbls": 1500.0,
+            "peak_gas_mcf": 800.0,
+            "eur_boe": 450000.0,
+            "dca_method": "duong",
+        }
+        summary = _build_production_summary(prod)
+        assert summary.total_months == 24
+        assert summary.peak_oil_bbls == 1500.0
+        assert summary.peak_gas_mcf == 800.0
+        assert summary.eur_boe == 450000.0
+        assert summary.dca_method == "duong"
+
+    def test_empty_data(self):
+        from mt_oil.api.routes.agent import _build_production_summary
+
+        summary = _build_production_summary({})
+        assert summary.total_months == 0
+        assert summary.peak_oil_bbls == 0.0
+        assert summary.peak_gas_mcf == 0.0
+        assert summary.eur_boe is None
+        assert summary.dca_method is None
+
+    def test_partial_data(self):
+        from mt_oil.api.routes.agent import _build_production_summary
+
+        prod = {"total_months": 6, "peak_oil_bbls": 500}
+        summary = _build_production_summary(prod)
+        assert summary.total_months == 6
+        assert summary.peak_oil_bbls == 500.0
+        assert summary.peak_gas_mcf == 0.0
+        assert summary.eur_boe is None
+        assert summary.dca_method is None
+
+    def test_null_values(self):
+        from mt_oil.api.routes.agent import _build_production_summary
+
+        prod = {"total_months": None, "peak_oil_bbls": None, "eur_boe": None}
+        summary = _build_production_summary(prod)
+        assert summary.total_months == 0
+        assert summary.peak_oil_bbls == 0.0
+        assert summary.eur_boe is None
+
+
 class TestGcsBlobName:
     @patch("mt_oil.agents.tools.document._gcs_blob_name")
     def test_blob_name_format(self, mock_name):

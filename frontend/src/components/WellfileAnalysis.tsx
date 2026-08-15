@@ -8,6 +8,8 @@ interface WellfileAnalysisProps {
     loading: boolean;
     analysis: WellfileAnalysisResponse | null;
     wellfileUrl: WellfileResponse | null;
+    error: boolean;
+    onRetry: () => void;
 }
 
 function formatFeet(value?: number): string {
@@ -71,7 +73,7 @@ function ParamCard({ label, value }: { label: string; value: string }) {
     );
 }
 
-export function WellfileAnalysis({ selectedWell, loading, analysis, wellfileUrl }: WellfileAnalysisProps) {
+export function WellfileAnalysis({ selectedWell, loading, analysis, wellfileUrl, error, onRetry }: WellfileAnalysisProps) {
     if (!selectedWell) {
         return (
             <div className="flex-1 overflow-y-auto">
@@ -103,9 +105,24 @@ export function WellfileAnalysis({ selectedWell, loading, analysis, wellfileUrl 
             <div className="flex-1 overflow-y-auto">
                 <div className="h-full flex items-center justify-center text-gray-400">
                     <div className="text-center max-w-md">
-                        <FileSearch className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                        <p className="text-lg mb-2">No wellfile analysis available</p>
-                        <p className="text-sm text-gray-400">Try selecting a different well with production data.</p>
+                        <AlertTriangle className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                        <p className="text-lg mb-2">
+                            {error ? "Could not load wellfile analysis" : "No wellfile analysis available"}
+                        </p>
+                        <p className="text-sm text-gray-400">
+                            {error
+                                ? "The analysis could not be completed. This may be a temporary issue — try again."
+                                : "Try selecting a different well with production data."}
+                        </p>
+                        {error && selectedWell && (
+                            <button
+                                onClick={onRetry}
+                                className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                <Loader2 className="w-4 h-4" />
+                                Retry Analysis
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
