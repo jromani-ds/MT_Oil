@@ -14,7 +14,6 @@ requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.1.4",
     "geopandas>=1.0.0",
-    "seaborn>=0.13.0",
     "scikit-learn>=1.3.2",
     "numpy>=1.26.2",
     "scipy>=1.11.0",
@@ -29,12 +28,18 @@ dependencies = [
     "pyarrow>=15.0.0",
     "db-dtypes>=1.2.0",
     "slowapi>=0.1.9",
+    "google-adk>=1.0.0",
+    "google-genai>=1.0.0",
+    "tenacity>=8.0.0",
+    "joblib>=1.3.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.scripts]
 fracfocus-update = "mt_oil.jobs.fracfocus_update:main"
 pdf-fetch = "mt_oil.jobs.pdf_fetch:main"
 gis-update = "mt_oil.jobs.gis_update:main"
+batch-extract-wellfiles = "mt_oil.jobs.batch_wellfile_extraction:main"
 
 [project.optional-dependencies]
 dev = [
