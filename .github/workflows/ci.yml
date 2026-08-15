@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate required repository config
-        if: github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
         run: |
           missing=0
           if [ -z "${{ vars.GCP_PROJECT_ID }}" ]; then echo "::error::GCP_PROJECT_ID repository variable is not set"; missing=1; fi
