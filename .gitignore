@@ -23,6 +23,7 @@ venv/
 *.xlsx # In case you generate any Excel outputs
 
 # Operating System files
+.DS_Store # macOS specific
 .Trash-* # macOS specific
 Thumbs.db # Windows specific
 
@@ -79,15 +80,4 @@ htmlcov/
 
 # macOS
 .DS_Store
-
-# Plan / design docs
 plan.md
-
-# Playwright & visual-verification scratch artifacts
-test-results/
-playwright-report/
-playwright.config.ts
-playwright.config.js
-frontend/*.cjs
-**/verification/
-tests/playwright/

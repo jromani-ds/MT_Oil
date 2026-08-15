@@ -55,7 +55,7 @@ The frontend is served from `/index.html` on the GCS static website endpoint (th
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.9+
 - Node.js 22+
 
 ### 1. Backend Setup
@@ -96,6 +96,7 @@ _The dashboard will run at `http://localhost:5173`._
 The system fits decline curves to historical production data using `scipy.optimize`:
 
 - **Arps**: Standard hyperbolic decline.
+- **Modified Arps**: Hyperbolic with exponential cutoff.
 - **Duong**: Logic for unconventional fractured reservoirs.
 
 ### Economic Modeling
@@ -106,41 +107,6 @@ Calculates key financial metrics based on DCA forecasts:
 - **ROI**: Return on Investment.
 - **Payout**: Time to recover CAPEX.
 - **Parameters**: Handles price differentials, taxes (Ad Valorem, Severance), and variable operating costs.
-
-### Agentic Wellfile Analysis
-
-Uses a [Google ADK](https://google.github.io/adk-docs/) agent powered by
-Gemini 2.5 Flash Lite to extract completion parameters from wellfile PDFs
-hosted on the Montana DNRC file server. Results are cached in a BigQuery
-table for fast subsequent lookups. The agent computes derived intensity
-metrics (proppant lbs/ft, fluid bbls/ft) from extracted specs.
-
-- **BigQuery cache**: repeated requests bypass the LLM entirely.
-- **Fallback PDF source**: state DNRC server (primary) / GCS (cached copy).
-- **Exposed via**: `POST /agent/wellfile`.
-
-### GIS Layers
-
-Interactive geospatial overlays rendered on the Leaflet map, sourced from
-Montana MBOGC shapefiles processed into GeoJSON:
-
-- **WellPaths** — directional / horizontal wellbore path lines
-- **WellSurface** — well surface point locations
-- **FieldBoundaries** — delineated field boundary polygons
-- **Units** — enhanced recovery unit and gas storage unit polygons
-
-Refreshed monthly by the `gis_update` Cloud Run Job.
-
-## Repository Layout
-
-For detailed documentation on each area, see the per-directory READMEs:
-
-- [`frontend/`](frontend/) — React dashboard ([README](frontend/README.md))
-- [`src/mt_oil/`](src/mt_oil/) — FastAPI backend ([README](src/mt_oil/README.md))
-- [`infra/`](infra/) — Terraform infrastructure ([README](infra/README.md))
-- [`scripts/`](scripts/) — Data seeding & GIS processing ([README](scripts/README.md))
-- [`tests/`](tests/) — pytest suite
-- [`.github/`](.github/) — GitHub Actions CI/CD
 
 ## Development
 
@@ -219,52 +185,31 @@ python scripts/seed_bigquery.py \
   --dataset mt_oil_dev
 ```
 
-### Monthly Cloud Run Jobs
+### FracFocus Updates
 
-Cloud Scheduler triggers four jobs on a monthly cadence. Trigger ad-hoc runs with:
+Cloud Scheduler is enabled and triggers the FracFocus and PDF fetch jobs monthly. For ad-hoc runs, trigger manually:
 
 ```bash
-# FracFocus — download registry, aggregate by API, load to BigQuery
 gcloud run jobs execute mt-oil-fracfocus-dev --region=us-central1 --project=<GCP_PROJECT_ID>
-
-# PDF Fetch — download wellfile PDFs from state DNRC, store in GCS
-gcloud run jobs execute mt-oil-pdf-fetch-dev --region=us-central1 --project=<GCP_PROJECT_ID>
-
-# GIS Update — refresh shapefile-to-GeoJSON layers in GCS
-gcloud run jobs execute mt-oil-gis-update-dev --region=us-central1 --project=<GCP_PROJECT_ID>
-
-# Batch Wellfile Extraction — runs Gemini extraction on all horizontal wells
-gcloud run jobs execute mt-oil-batch-wellfile-dev --region=us-central1 --project=<GCP_PROJECT_ID>
+gcloud run jobs execute mt-oil-fracfocus-prod --region=us-central1 --project=<GCP_PROJECT_ID>
 ```
 
-| Job              | Schedule             | Memory | Description                                                                 |
-| ---------------- | -------------------- | ------ | --------------------------------------------------------------------------- |
-| `fracfocus`      | 1st day, 2 AM MT     | 4 GiB  | Download FracFocus, aggregate proppant/fluid, archive ZIP, load to BigQuery |
-| `pdf-fetch`      | 3rd day, 5 AM MT     | 2 GiB  | Download wellfile PDFs from state DNRC to GCS (incremental)                 |
-| `gis-update`     | 5th day, midnight MT | 4 GiB  | Download shapefiles, reproject to GeoJSON, upload to GCS                    |
-| `batch-wellfile` | (on-demand)          | 2 GiB  | Gemini extraction of completion params from cached PDFs                     |
+Each run downloads the latest FracFocus registry, aggregates proppant/fluid totals by API, loads the result into BigQuery, and archives the raw ZIP to the project's GCS data bucket under `raw/fracfocus/`.
 
 ### Configuration
 
 Runtime configuration is externalized through environment variables; see `src/mt_oil/config.py`. Notable settings:
 
-| Variable                      | Purpose                                       | Default                            |
-| ----------------------------- | --------------------------------------------- | ---------------------------------- |
-| `RATE_LIMIT`                  | Per-IP rate limit string for read endpoints   | `60/minute`                        |
-| `CORS_ORIGINS`                | Comma-separated allowed frontend origins      | `FRONTEND_URL`                     |
-| `MODEL_PATH`                  | Path or `gs://` URL for the ML model artifact | `rf_model.joblib`                  |
-| `ENABLE_LOCAL_DATA`           | Use local `.tab` files vs. BigQuery           | `true`                             |
-| `GCS_DATA_BUCKET`             | GCS bucket for data / model artifacts         | —                                  |
-| `BIGQUERY_DATASET`            | BigQuery dataset ID                           | —                                  |
-| `VERTEX_AI_LOCATION`          | Vertex AI region (Gemini)                     | `us-central1`                      |
-| `VERTEX_AI_MODEL`             | Vertex AI model for wellfile extraction       | `gemini-2.5-flash-lite`            |
-| `WELLFILE_PARSED_TABLE`       | BigQuery table for parsed wellfile cache      | `wellfile_parsed_metadata`         |
-| `WELLFILE_STATE_URL_TEMPLATE` | URL template for state DNRC wellfile PDFs     | `https://bogfiles.dnrc.mt.gov/...` |
+| Variable       | Purpose                                       | Default           |
+| -------------- | --------------------------------------------- | ----------------- |
+| `RATE_LIMIT`   | Per-IP rate limit string for read endpoints   | `60/minute`       |
+| `CORS_ORIGINS` | Comma-separated allowed frontend origins      | `FRONTEND_URL`    |
+| `MODEL_PATH`   | Path or `gs://` URL for the ML model artifact | `rf_model.joblib` |
 
 ## Security & Cost
 
 - **Public API**: limited via SlowAPI (`60/minute` read, `5/minute` training).
-- **Cost cap**: ~$10/month hard ceiling; Cloud Run `max_scale = 1`, CPU throttled, 2 GiB (API) / 4 GiB (jobs).
+- **Cost cap**: ~$10/month hard ceiling; Cloud Run `max_scale = 1`, CPU throttled, 512 MiB–1 GiB memory.
 - **No committed secrets**: Authentication uses Workload Identity Federation and Google Secret Manager.
 
 ## Contributing
