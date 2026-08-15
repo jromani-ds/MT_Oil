@@ -1,73 +1,53 @@
-# React + TypeScript + Vite
+# MT Oil Dashboard — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite + TypeScript + Tailwind CSS v4 dashboard for the MT Oil Analytics
+Platform. Built with Recharts (charts), react-leaflet (maps), and Lucide (icons).
 
-Currently, two official plugins are available:
+## Key Components
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+| Component          | File                                  | Description                                   |
+| ------------------ | ------------------------------------- | --------------------------------------------- |
+| `Dashboard`        | `src/Dashboard.tsx`                   | Main layout: sidebar + map + tabbed panels    |
+| `MapComponent`     | `src/MapComponent.tsx`                | Leaflet map with well markers, GIS overlays   |
+| `GisLayers`        | `src/GisLayers.tsx`                   | React-leaflet layer component for GIS GeoJSON |
+| `LayerToggle`      | `src/LayerToggle.tsx`                 | UI toggle to show/hide GIS layers             |
+| `MapSidebar`       | `src/components/MapSidebar.tsx`       | Well list and filter sidebar                  |
+| `DeclineCurve`     | `src/components/DeclineCurve.tsx`     | DCA chart (Recharts)                          |
+| `Economics`        | `src/components/Economics.tsx`        | NPV/ROI/payout card                           |
+| `WellfileAnalysis` | `src/components/WellfileAnalysis.tsx` | Agent-powered wellfile extraction UI          |
+| `KpiCard`          | `src/components/KpiCard.tsx`          | Reusable KPI metric card                      |
+| `Header`           | `src/components/Header.tsx`           | App header with navigation                    |
+| `ErrorBoundary`    | `src/components/ErrorBoundary.tsx`    | React error boundary wrapper                  |
 
-## React Compiler
+## API Client
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The API base URL is configured at build time via `VITE_API_BASE_URL`. The client
+lives in `src/api/client.ts` and provides typed functions for every endpoint.
 
-## Expanding the ESLint configuration
+## Scripts
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Command         | Description                              |
+| --------------- | ---------------------------------------- |
+| `npm run dev`   | Start Vite dev server (hot-reload)       |
+| `npm run build` | Type-check + production build to `dist/` |
+| `npm run test`  | Run Vitest suite                         |
+| `npm run lint`  | ESLint                                   |
 
-```js
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
+## Testing
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Uses Vitest + @testing-library/react + jsdom. Test files live in `src/test/`
+and are co-located with components when applicable.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
-```
+## Dependencies
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- **react-leaflet** / leaflet — map rendering
+- **recharts** — DCA and economic charts
+- **lucide-react** — icon set
+- **axios** — HTTP client
+- **sonner** — toast notifications
 
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
+## Environment Variables
 
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
-```
+| Variable            | Default                 | Description     |
+| ------------------- | ----------------------- | --------------- |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | Backend API URL |
