@@ -58,9 +58,13 @@ This project follows a `feature → dev → main` branching model. Direct pushes
 
 ## Project Structure
 
-- `src/mt_oil/`: Source code package.
-- `tests/`: Pytest suite.
+- `src/mt_oil/`: Source code package (API, agents, domain, data, jobs, models, processing).
+- `frontend/`: React + Vite + Tailwind dashboard.
+- `tests/`: Pytest + Vitest suites.
+- `infra/`: Terraform modules and environment configurations.
+- `scripts/`: Data seeding and GIS processing scripts.
 - `.github/`: CI/CD configurations.
+- For detailed docs see the per-directory READMEs linked from the root `README.md`.
 
 ## Reporting Issues
 
