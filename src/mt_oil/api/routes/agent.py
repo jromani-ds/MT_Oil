@@ -12,6 +12,7 @@ from slowapi.util import get_remote_address
 
 from mt_oil.agents.agent import wellfile_agent
 from mt_oil.agents.tools.document import _check_bq_cache
+from mt_oil.agents.tools.production import bq_production_tool
 from mt_oil.schemas.wellfile import (
     CompletionSpecs,
     ProductionSummary,
@@ -51,6 +52,16 @@ def _compute_intensity(
     return proppant_int, fluid_int
 
 
+def _build_production_summary(prod: dict) -> ProductionSummary:
+    return ProductionSummary(
+        total_months=int(prod.get("total_months", 0) or 0),
+        peak_oil_bbls=float(prod.get("peak_oil_bbls", 0) or 0),
+        peak_gas_mcf=float(prod.get("peak_gas_mcf", 0) or 0),
+        eur_boe=prod.get("eur_boe"),
+        dca_method=prod.get("dca_method"),
+    )
+
+
 @router.post("/wellfile", response_model=WellfileAgentResponse)
 async def process_wellfile(request: Request, body: WellfileAgentRequest):
     """Analyze a wellfile: extract completion specs, fetch production, compute intensity metrics."""
@@ -70,12 +81,19 @@ async def process_wellfile(request: Request, body: WellfileAgentRequest):
             max_treating_pressure_psi=cached.get("max_treating_pressure_psi"),
             casing_intermediate_depth_ft=cached.get("casing_intermediate_depth_ft"),
         )
+        try:
+            production_data = bq_production_tool(api_number)
+            production_summary = _build_production_summary(production_data)
+        except Exception:
+            logger.warning("Failed to fetch production for cached well %s", api_number)
+            production_summary = _build_production_summary({})
         proppant_int, fluid_int = _compute_intensity(completion.model_dump())
         return WellfileAgentResponse(
             api_number=api_number,
             extraction_status="SUCCESS",
             cache_hit=True,
             completion_specs=completion,
+            production_summary=production_summary,
             proppant_intensity_lbs_per_ft=proppant_int,
             fluid_intensity_bbls_per_ft=fluid_int,
         )
@@ -135,13 +153,7 @@ def _parse_agent_response(api_number: str, text: str) -> WellfileAgentResponse:
         completion = None
 
     prod_data = data.get("production_summary") or data.get("production_data") or {}
-    production_summary = ProductionSummary(
-        total_months=prod_data.get("total_months", 0),
-        peak_oil_bbls=prod_data.get("peak_oil_bbls", 0),
-        peak_gas_mcf=prod_data.get("peak_gas_mcf", 0),
-        eur_boe=prod_data.get("eur_boe"),
-        dca_method=prod_data.get("dca_method"),
-    )
+    production_summary = _build_production_summary(prod_data)
 
     extraction_status = data.get("extraction_status", "SUCCESS")
     cache_hit = data.get("cache_hit", False)

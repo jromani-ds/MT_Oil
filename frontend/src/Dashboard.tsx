@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { getWells, getWellProduction, fitDecline, runEconomics, getWellfileUrl, getFilterOptions, analyzeWellfile } from './api/client';
 import type { Well, ProductionRecord, DeclineResponse, EconomicMetrics, FilterOptions, FilterParams, WellfileResponse, WellfileAnalysisResponse } from './api/client';
 import { MapComponent } from './MapComponent';
@@ -33,6 +33,7 @@ export function Dashboard() {
     const [wellfileUrl, setWellfileUrl] = useState<WellfileResponse | null>(null);
     const [wellfileAnalysis, setWellfileAnalysis] = useState<WellfileAnalysisResponse | null>(null);
     const [wellfileLoading, setWellfileLoading] = useState(false);
+    const [wellfileError, setWellfileError] = useState(false);
     const econParamsRef = useRef(econParams);
     useEffect(() => {
         econParamsRef.current = econParams;
@@ -109,6 +110,7 @@ export function Dashboard() {
         setEconomics(null);
         setWellfileUrl(null);
         setWellfileAnalysis(null);
+        setWellfileError(false);
         setWellfileLoading(true);
         setProduction([]);
     };
@@ -157,16 +159,28 @@ export function Dashboard() {
             });
     }, [selectedWell]);
 
+    const loadWellfileAnalysis = useCallback(async (apiNumber: string) => {
+        setWellfileLoading(true);
+        setWellfileError(false);
+        try {
+            const result = await analyzeWellfile(apiNumber);
+            setWellfileAnalysis(result);
+        } catch {
+            setWellfileError(true);
+            toast.error("Failed to analyze wellfile");
+        } finally {
+            setWellfileLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (!selectedWell) return;
+        loadWellfileAnalysis(selectedWell.API_WellNo);
+    }, [selectedWell, loadWellfileAnalysis]);
 
-        const apiNumber = selectedWell.API_WellNo;
-
-        analyzeWellfile(apiNumber)
-            .then(setWellfileAnalysis)
-            .catch(() => toast.error("Failed to analyze wellfile"))
-            .finally(() => setWellfileLoading(false));
-    }, [selectedWell]);
+    const handleRetryWellfile = () => {
+        if (selectedWell) loadWellfileAnalysis(selectedWell.API_WellNo);
+    };
 
     const tabs = [
         { id: 'map' as TabType, label: 'Map', icon: Map },
@@ -245,6 +259,8 @@ export function Dashboard() {
                         loading={wellfileLoading}
                         analysis={wellfileAnalysis}
                         wellfileUrl={wellfileUrl}
+                        error={wellfileError}
+                        onRetry={handleRetryWellfile}
                     />
                 )}
 
