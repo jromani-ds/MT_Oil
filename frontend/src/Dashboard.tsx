@@ -1,17 +1,18 @@
 import { useEffect, useState, useRef } from 'react';
-import { getWells, getWellProduction, fitDecline, runEconomics, getWellfileUrl, getFilterOptions } from './api/client';
-import type { Well, ProductionRecord, DeclineResponse, EconomicMetrics, FilterOptions, FilterParams, WellfileResponse } from './api/client';
+import { getWells, getWellProduction, fitDecline, runEconomics, getWellfileUrl, getFilterOptions, analyzeWellfile } from './api/client';
+import type { Well, ProductionRecord, DeclineResponse, EconomicMetrics, FilterOptions, FilterParams, WellfileResponse, WellfileAnalysisResponse } from './api/client';
 import { MapComponent } from './MapComponent';
 import { useGisFeatureCounts } from './GisLayers';
 import type { GisLayerState } from './GisLayers';
-import { Map, TrendingDown, DollarSign, Loader2 } from 'lucide-react';
+import { Map, TrendingDown, DollarSign, FileSearch, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Header } from './components/Header';
 import { MapSidebar } from './components/MapSidebar';
 import { DeclineCurve } from './components/DeclineCurve';
 import { Economics } from './components/Economics';
+import { WellfileAnalysis } from './components/WellfileAnalysis';
 
-type TabType = 'map' | 'decline' | 'economics';
+type TabType = 'map' | 'decline' | 'economics' | 'wellfile';
 
 export function Dashboard() {
     const [wells, setWells] = useState<Well[]>([]);
@@ -30,6 +31,8 @@ export function Dashboard() {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<TabType>('map');
     const [wellfileUrl, setWellfileUrl] = useState<WellfileResponse | null>(null);
+    const [wellfileAnalysis, setWellfileAnalysis] = useState<WellfileAnalysisResponse | null>(null);
+    const [wellfileLoading, setWellfileLoading] = useState(false);
     const econParamsRef = useRef(econParams);
     useEffect(() => {
         econParamsRef.current = econParams;
@@ -105,6 +108,8 @@ export function Dashboard() {
         setPrediction(null);
         setEconomics(null);
         setWellfileUrl(null);
+        setWellfileAnalysis(null);
+        setWellfileLoading(true);
         setProduction([]);
     };
 
@@ -152,10 +157,22 @@ export function Dashboard() {
             });
     }, [selectedWell]);
 
+    useEffect(() => {
+        if (!selectedWell) return;
+
+        const apiNumber = selectedWell.API_WellNo;
+
+        analyzeWellfile(apiNumber)
+            .then(setWellfileAnalysis)
+            .catch(() => toast.error("Failed to analyze wellfile"))
+            .finally(() => setWellfileLoading(false));
+    }, [selectedWell]);
+
     const tabs = [
         { id: 'map' as TabType, label: 'Map', icon: Map },
         { id: 'decline' as TabType, label: 'Decline Curve', icon: TrendingDown },
         { id: 'economics' as TabType, label: 'Economics', icon: DollarSign },
+        { id: 'wellfile' as TabType, label: 'Wellfile', icon: FileSearch },
     ];
 
     return (
@@ -220,6 +237,15 @@ export function Dashboard() {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {activeTab === 'wellfile' && (
+                    <WellfileAnalysis
+                        selectedWell={selectedWell}
+                        loading={wellfileLoading}
+                        analysis={wellfileAnalysis}
+                        wellfileUrl={wellfileUrl}
+                    />
                 )}
 
                 {activeTab === 'decline' && (
