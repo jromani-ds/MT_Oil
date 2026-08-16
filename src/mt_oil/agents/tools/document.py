@@ -363,61 +363,14 @@ def _extract_section(
 
 # -- Priority 1: Completion / Stimulation / Downhole Tubulars --
 
-COMPLETION_PROMPT = """Extract the following completion, stimulation, and downhole tubular parameters from this wellfile PDF. Return ONLY a valid JSON object matching the provided schema. If a value is not found or illegible, set it to null. Use empty arrays when no data is available.
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
-API Number: {api_number}
 
-GENERAL WELL DATA:
-- well_name: Official well name and number
-- tvd_ft: True Vertical Depth in feet
-- md_ft: Total Measured Depth in feet
-- lateral_length_ft: Horizontal lateral length in feet
-- total_clean_fluid_bbls: Total clean fracturing fluid in barrels
-- total_proppant_lbs: Total proppant/sand weight in pounds
-- max_treating_pressure_psi: Maximum treating pressure in PSI
-- casing_intermediate_depth_ft: Intermediate casing setting depth in feet
+def _load_prompt(name: str) -> str:
+    return (_PROMPTS_DIR / f"{name}.md").read_text()
 
-IP / FLOW TEST (ip_flow_test object):
-- test_duration_hrs: Duration of the test in hours
-- oil_rate_24hr_bbls: 24-hour equivalent oil rate in barrels
-- gas_rate_24hr_mcf: 24-hour equivalent gas rate in MCF
-- water_rate_24hr_bbls: 24-hour equivalent water rate in barrels
-- choke_size_inches: Choke size in inches
-- flowing_tubing_pressure_psi: Flowing tubing pressure in PSI
-- shut_in_tubing_pressure_psi: Shut-in tubing pressure in PSI
-- test_method: How the test was conducted (swab test, flowing, etc.)
 
-PERFORATIONS (perforations array, one entry per interval):
-- top_md_ft: Top measured depth of perforated interval
-- bottom_md_ft: Bottom measured depth of perforated interval
-- shots_per_ft: Shots per foot
-- gun_charge_diameter_in: Gun or charge diameter in inches
-- gun_type: Gun or charge type description
-- phase_angle_deg: Phase angle in degrees
-- formation_name: Name of the formation perforated
-- status: Whether open, squeezed, or isolated
-
-STIMULATION STAGES (stimulation_stages array, one entry per stage):
-- treatment_type: Type of treatment (acid breakdown, matrix acid, hydraulic fracture, etc.)
-- stage_number: Sequential stage number
-- fluid_volume_bbls: Fluid volume pumped in barrels
-- chemical_additives: Chemical additives and their concentrations
-- diverter_specs: Diverter or ball sealer specifications
-- max_treating_pressure_psi: Maximum treating pressure
-- avg_treating_pressure_psi: Average treating pressure
-- injection_rate_bpm: Injection rate in barrels per minute
-- isip_psi: Instantaneous Shut-In Pressure
-
-DOWNHOLE TUBULARS (downhole_tubulars object):
-- tubing_od_in: Tubing outer diameter in inches
-- tubing_weight_lbs_ft: Tubing weight in pounds per foot
-- tubing_grade: Steel grade of the tubing
-- thread_type: Thread / connection type
-- eot_depth_ft: End of Tubing measured depth
-- seating_nipple_depth_ft: Seating Nipple measured depth
-- tubing_anchor_catcher_depth_ft: Tubing Anchor Catcher measured depth
-- applied_pretension_lbs: Applied pretension load in pounds
-"""
+COMPLETION_PROMPT = _load_prompt("completion")
 
 
 @retry(
@@ -436,31 +389,7 @@ def _extract_completion_with_retry(api_number: str, pdf_bytes: bytes) -> dict:
 
 # -- Priority 2: Geology (formation tops + hydrocarbon shows) --
 
-GEOLOGY_PROMPT = """Extract geological formation tops and hydrocarbon show data from this wellfile PDF. Return ONLY a valid JSON object matching the provided schema. If a value is not found, set it to null. Use empty arrays when no data is available.
-
-API Number: {api_number}
-
-FORMATION TOPS (formation_tops array, one entry per formation):
-- formation_name: Name of the formation
-- md_ft: Measured Depth in feet to the formation top
-- tvd_ft: True Vertical Depth in feet
-- subsea_elevation_ft: Subsea elevation in feet
-- pick_source: How the pick was determined (E-log, mud log, prognosis)
-
-HYDROCARBON SHOWS (hydrocarbon_shows array, one entry per show interval):
-- depth_from_ft: Top of the show interval in feet
-- depth_to_ft: Bottom of the show interval in feet
-- peak_gas_units: Maximum gas units recorded over the interval
-- baseline_gas_units: Baseline or background gas units
-- c1_ppm: Methane concentration in ppm
-- c2_ppm: Ethane concentration in ppm
-- c3_ppm: Propane concentration in ppm
-- c4_ppm: Butane concentration in ppm
-- c5_ppm: Pentane concentration in ppm
-- fluorescence: Visual fluorescence description
-- cut: Sample cut description
-- lithology_description: Lithologic description of the interval
-"""
+GEOLOGY_PROMPT = _load_prompt("geology")
 
 
 @retry(
@@ -479,43 +408,7 @@ def _extract_geology_with_retry(api_number: str, pdf_bytes: bytes) -> dict:
 
 # -- Priority 3: Casing / Cement / Zonal Isolation --
 
-CASING_PROMPT = """Extract casing, cementing, multi-stage tooling, and cement evaluation data from this wellfile PDF. Return ONLY a valid JSON object matching the provided schema. If a value is not found, set it to null. Use empty arrays when no data is available.
-
-API Number: {api_number}
-
-CASING PROGRAM (casing_program array, one entry per string):
-- string_type: Type of string (Surface, Intermediate, Production, Liner)
-- hole_size_in: Drilled hole size in inches
-- casing_od_in: Casing outer diameter in inches
-- nominal_weight_lbs_ft: Nominal weight in pounds per foot
-- steel_grade: Steel grade designation
-- connection_type: Thread or connection type
-- setting_depth_ft: Setting depth in feet
-- burst_rating_psi: Burst pressure rating
-- collapse_rating_psi: Collapse pressure rating
-
-CEMENTING OPERATIONS (cementing_operations array, one entry per job):
-- slurry_volume_sacks: Volume of cement in sacks
-- slurry_volume_bbls: Volume of cement in barrels
-- lead_tail_formulation: Description of lead and tail slurry formulations
-- slurry_density_ppg: Slurry density in pounds per gallon
-- additives: Cement additives used
-- displacement_volume_bbls: Displacement volume in barrels
-- bump_pressure_psi: Bump pressure in PSI
-- surface_return_volume_bbls: Volume of cement returns at surface in barrels
-
-MULTI-STAGE TOOLS (multi_stage_tools array, one entry per tool):
-- stage_tool_depth_ft: Stage/DV tool measured depth
-- opening_pressure_psi: Tool opening pressure
-- closing_pressure_psi: Tool closing pressure
-- isolation_interval_from_ft: Stage isolation interval top
-- isolation_interval_to_ft: Stage isolation interval bottom
-
-CEMENT EVALUATION (cement_evaluation object):
-- logged_toc_ft: Logged Top of Cement in feet
-- verification_method: How the TOC was verified (Cement Bond Log, temperature survey, calculated)
-- bond_assessment: Qualitative bond assessment across target pay zones
-"""
+CASING_PROMPT = _load_prompt("casing")
 
 
 @retry(
@@ -534,37 +427,7 @@ def _extract_casing_with_retry(api_number: str, pdf_bytes: bytes) -> dict:
 
 # -- Priority 4: Drilling (mud, bits, wellbore events) --
 
-DRILLING_PROMPT = """Extract drilling fluid parameters, bit performance data, and wellbore event records from this wellfile PDF. Return ONLY a valid JSON object matching the provided schema. If a value is not found, set it to null. Use empty arrays when no data is available.
-
-API Number: {api_number}
-
-DRILLING FLUID PARAMETERS (drilling_fluid_params array, one entry per depth interval):
-- depth_ft: Depth of the fluid measurement in feet
-- mud_type: Mud system type (water-based, oil-based invert, etc.)
-- mud_weight_ppg: Mud weight in pounds per gallon
-- funnel_viscosity_sec: Funnel viscosity in seconds
-- fluid_loss_cc: Fluid loss or water loss in cc
-- chlorides_ppm: Chloride concentration in ppm
-- oil_water_ratio: Oil-to-water ratio
-
-BIT RUNS (bit_runs array, one entry per bit run):
-- bit_number: Sequential bit number
-- bit_size_in: Bit diameter in inches
-- manufacturer: Bit manufacturer name
-- iadc_code: IADC bit code or cutter type description
-- cutter_type: Cutter type (PDC, roller cone, etc.)
-- depth_in_ft: Depth the bit went in (start depth)
-- depth_out_ft: Depth the bit came out (end depth)
-- rotating_hours: Total rotating hours on the bit
-- footage_drilled_ft: Total footage drilled by the bit
-- avg_rop_ft_per_hr: Average rate of penetration in feet per hour
-
-WELLBORE EVENTS (wellbore_events array, one entry per event):
-- event_type: Type of event (lost circulation, gas kick, tight hole, etc.)
-- depth_ft: Depth where the event occurred
-- description: Detailed description of the event
-- treatment_type: Treatment or remediation applied
-"""
+DRILLING_PROMPT = _load_prompt("drilling")
 
 
 @retry(
