@@ -35,6 +35,5 @@ wellfile_agent = Agent(
     output_schema=WellfileAgentResponse,
     generate_content_config=types.GenerateContentConfig(
         temperature=0.0,
-        response_mime_type="application/json",
     ),
 )
