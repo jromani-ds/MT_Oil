@@ -140,6 +140,181 @@ export interface CompletionSpecs {
     casing_intermediate_depth_ft?: number;
 }
 
+export interface IpFlowTest {
+    test_duration_hrs?: number;
+    oil_rate_24hr_bbls?: number;
+    gas_rate_24hr_mcf?: number;
+    water_rate_24hr_bbls?: number;
+    choke_size_inches?: number;
+    flowing_tubing_pressure_psi?: number;
+    shut_in_tubing_pressure_psi?: number;
+    test_method?: string;
+}
+
+export interface Perforation {
+    top_md_ft?: number;
+    bottom_md_ft?: number;
+    shots_per_ft?: number;
+    gun_charge_diameter_in?: number;
+    gun_type?: string;
+    phase_angle_deg?: number;
+    formation_name?: string;
+    status?: string;
+}
+
+export interface StimulationStage {
+    treatment_type?: string;
+    stage_number?: number;
+    fluid_volume_bbls?: number;
+    chemical_additives?: string;
+    diverter_specs?: string;
+    max_treating_pressure_psi?: number;
+    avg_treating_pressure_psi?: number;
+    injection_rate_bpm?: number;
+    isip_psi?: number;
+}
+
+export interface DownholeTubulars {
+    tubing_od_in?: number;
+    tubing_weight_lbs_ft?: number;
+    tubing_grade?: string;
+    thread_type?: string;
+    eot_depth_ft?: number;
+    seating_nipple_depth_ft?: number;
+    tubing_anchor_catcher_depth_ft?: number;
+    applied_pretension_lbs?: number;
+}
+
+export interface CompletionStimulationData {
+    well_name?: string;
+    tvd_ft?: number;
+    md_ft?: number;
+    lateral_length_ft?: number;
+    total_clean_fluid_bbls?: number;
+    total_proppant_lbs?: number;
+    max_treating_pressure_psi?: number;
+    casing_intermediate_depth_ft?: number;
+    ip_flow_test?: IpFlowTest;
+    perforations?: Perforation[];
+    stimulation_stages?: StimulationStage[];
+    downhole_tubulars?: DownholeTubulars;
+}
+
+export interface FormationTop {
+    formation_name?: string;
+    md_ft?: number;
+    tvd_ft?: number;
+    subsea_elevation_ft?: number;
+    pick_source?: string;
+}
+
+export interface HydrocarbonShow {
+    depth_from_ft?: number;
+    depth_to_ft?: number;
+    peak_gas_units?: number;
+    baseline_gas_units?: number;
+    c1_ppm?: number;
+    c2_ppm?: number;
+    c3_ppm?: number;
+    c4_ppm?: number;
+    c5_ppm?: number;
+    fluorescence?: string;
+    cut?: string;
+    lithology_description?: string;
+}
+
+export interface GeologyData {
+    formation_tops?: FormationTop[];
+    hydrocarbon_shows?: HydrocarbonShow[];
+}
+
+export interface CasingString {
+    string_type?: string;
+    hole_size_in?: number;
+    casing_od_in?: number;
+    nominal_weight_lbs_ft?: number;
+    steel_grade?: string;
+    connection_type?: string;
+    setting_depth_ft?: number;
+    burst_rating_psi?: number;
+    collapse_rating_psi?: number;
+}
+
+export interface CementOperation {
+    slurry_volume_sacks?: number;
+    slurry_volume_bbls?: number;
+    lead_tail_formulation?: string;
+    slurry_density_ppg?: number;
+    additives?: string;
+    displacement_volume_bbls?: number;
+    bump_pressure_psi?: number;
+    surface_return_volume_bbls?: number;
+}
+
+export interface MultiStageTool {
+    stage_tool_depth_ft?: number;
+    opening_pressure_psi?: number;
+    closing_pressure_psi?: number;
+    isolation_interval_from_ft?: number;
+    isolation_interval_to_ft?: number;
+}
+
+export interface CementEvaluation {
+    logged_toc_ft?: number;
+    verification_method?: string;
+    bond_assessment?: string;
+}
+
+export interface CasingCementData {
+    casing_program?: CasingString[];
+    cementing_operations?: CementOperation[];
+    multi_stage_tools?: MultiStageTool[];
+    cement_evaluation?: CementEvaluation;
+}
+
+export interface DrillingFluidParams {
+    depth_ft?: number;
+    mud_type?: string;
+    mud_weight_ppg?: number;
+    funnel_viscosity_sec?: number;
+    fluid_loss_cc?: number;
+    chlorides_ppm?: number;
+    oil_water_ratio?: string;
+}
+
+export interface BitRun {
+    bit_number?: number;
+    bit_size_in?: number;
+    manufacturer?: string;
+    iadc_code?: string;
+    cutter_type?: string;
+    depth_in_ft?: number;
+    depth_out_ft?: number;
+    rotating_hours?: number;
+    footage_drilled_ft?: number;
+    avg_rop_ft_per_hr?: number;
+}
+
+export interface WellboreEvent {
+    event_type?: string;
+    depth_ft?: number;
+    description?: string;
+    treatment_type?: string;
+}
+
+export interface DrillingData {
+    drilling_fluid_params?: DrillingFluidParams[];
+    bit_runs?: BitRun[];
+    wellbore_events?: WellboreEvent[];
+}
+
+export interface WellfileExtractionPayload {
+    completion_stimulation?: CompletionStimulationData;
+    geology?: GeologyData;
+    casing_cement?: CasingCementData;
+    drilling?: DrillingData;
+}
+
 export interface ProductionSummary {
     total_months: number;
     peak_oil_bbls: number;
@@ -157,6 +332,7 @@ export interface WellfileAnalysisResponse {
     proppant_intensity_lbs_per_ft?: number;
     fluid_intensity_bbls_per_ft?: number;
     well_name?: string;
+    wellfile_data?: WellfileExtractionPayload;
 }
 
 export const analyzeWellfile = async (apiNumber: string): Promise<WellfileAnalysisResponse> => {

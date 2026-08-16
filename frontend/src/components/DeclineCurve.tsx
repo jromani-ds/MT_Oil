@@ -8,6 +8,7 @@ type ChartPoint = Partial<ProductionRecord> & { Forecast_Oil?: number; dateVal: 
 function buildChartData(production: ProductionRecord[], prediction: DeclineResponse | null): ChartPoint[] {
   const data: ChartPoint[] = production.map(p => ({
     ...p,
+    BBLS_OIL_COND: Math.max(0, p.BBLS_OIL_COND || 0),
     dateVal: new Date(p.Rpt_Date).getTime(),
   }));
 
@@ -22,7 +23,7 @@ function buildChartData(production: ProductionRecord[], prediction: DeclineRespo
       data.push({
         Rpt_Date: d.toISOString().split('T')[0],
         dateVal: d.getTime(),
-        Forecast_Oil: val,
+        Forecast_Oil: Math.max(0, val),
       });
     });
   }
@@ -133,6 +134,7 @@ export function DeclineCurve({ selectedWell, loading, production, prediction }: 
                   tick={{ fontSize: 12 }}
                 />
                 <YAxis
+                  domain={[0, 'auto']}
                   tickFormatter={(v) => {
                     if (v === 0) return '0k';
                     const val = v / 1000;

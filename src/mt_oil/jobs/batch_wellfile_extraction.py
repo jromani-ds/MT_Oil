@@ -29,6 +29,7 @@ from mt_oil.agents.tools.document import (
     _extract_with_retry,
     _gcs_uri as doc_gcs_uri,
     _read_pdf_from_gcs,
+    _read_payload_from_bq,
     _write_to_bq,
 )
 from mt_oil.agents.telemetry import Timer, emit_agent_telemetry
@@ -88,12 +89,14 @@ def _wells_missing_pdf(
 
 
 def _wells_needing_extraction(api_numbers: list[str]) -> list[str]:
-    """Return wells not yet cached in the wellfile_parsed_metadata table."""
+    """Return wells not yet cached in the wellfile_parsed_metadata table (checks payload JSON first, then legacy flat columns)."""
     needing: list[str] = []
     for api in api_numbers:
-        cached = _check_bq_cache(api)
-        if cached is None:
-            needing.append(api)
+        payload = _read_payload_from_bq(api)
+        if payload is None:
+            cached = _check_bq_cache(api)
+            if cached is None:
+                needing.append(api)
     return needing
 
 
