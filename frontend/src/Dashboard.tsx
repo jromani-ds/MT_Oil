@@ -22,7 +22,7 @@ export function Dashboard() {
     const [economics, setEconomics] = useState<EconomicMetrics | null>(null);
     const [econParams, setEconParams] = useState({
         oilPrice: 70,
-        gasPrice: 3.5,
+        gasPrice: 2.5,
         capex: 6,
         discount: 10,
         opex: 10,
@@ -239,6 +239,7 @@ export function Dashboard() {
                             onToggleFilters={() => setShowFilters(!showFilters)}
                             onFilterChange={setFilters}
                             onToggleGisLayer={toggleGisLayer}
+                            onSelectWell={handleSelectWell}
                         />
                         <div className="flex-1">
                             <div className="bg-white h-full overflow-hidden">
