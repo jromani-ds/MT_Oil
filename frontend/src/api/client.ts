@@ -14,6 +14,7 @@ export interface Well {
     Lat: number;
     Long: number;
     Slant?: string;
+    Type?: string;
 }
 
 export interface ProductionRecord {
@@ -58,6 +59,7 @@ export interface FilterParams {
     limit?: number;
     skip?: number;
     hasProduction?: boolean;
+    search?: string;
     formation?: string;
     wellType?: string;
     slant?: string;
@@ -74,13 +76,14 @@ export const getFilterOptions = async (): Promise<FilterOptions> => {
 };
 
 export const getWells = async (params: FilterParams = {}): Promise<Well[]> => {
-    const { limit = 100, skip = 0, hasProduction = false, formation, wellType, slant } = params;
+    const { limit = 100, skip = 0, hasProduction = false, search, formation, wellType, slant } = params;
     const queryParams = new URLSearchParams({
         limit: limit.toString(),
         skip: skip.toString(),
         has_production: hasProduction.toString(),
     });
 
+    if (search) queryParams.append('search', search);
     if (formation) queryParams.append('formation', formation);
     if (wellType) queryParams.append('well_type', wellType);
     if (slant) queryParams.append('slant', slant);

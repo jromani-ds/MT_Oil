@@ -239,6 +239,7 @@ export function Dashboard() {
                             onToggleFilters={() => setShowFilters(!showFilters)}
                             onFilterChange={setFilters}
                             onToggleGisLayer={toggleGisLayer}
+                            onSelectWell={handleSelectWell}
                         />
                         <div className="flex-1">
                             <div className="bg-white h-full overflow-hidden">

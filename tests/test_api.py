@@ -16,6 +16,20 @@ def test_get_wells(client):
     assert "API_WellNo" in data[0]
 
 
+def test_well_search(client):
+    response = client.get("/wells?search=3000000000")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) >= 1
+    assert any("3000000000" in w["API_WellNo"] for w in data)
+
+
+def test_well_search_no_match(client):
+    response = client.get("/wells?search=ZZZZZ")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_well_details(client):
     # Fetch a list first to get a valid ID
     wells = client.get("/wells?limit=1").json()

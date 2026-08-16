@@ -242,6 +242,7 @@ def get_wells(
     limit: int = 100,
     skip: int = 0,
     has_production: bool = False,
+    search: Optional[str] = None,
     formation: Optional[str] = None,
     well_type: Optional[str] = None,
     slant: Optional[str] = None,
@@ -250,6 +251,9 @@ def get_wells(
         raise HTTPException(status_code=503, detail="Data not loaded")
 
     df = db.well_df.reset_index()
+
+    if search:
+        df = df[df["API_WellNo"].str.contains(search, case=False, na=False)]
 
     if has_production:
         if db.producing_wells_set is None:
