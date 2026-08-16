@@ -3,7 +3,7 @@
 import json
 import logging
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
@@ -110,18 +110,38 @@ async def process_wellfile(request: Request, body: WellfileAgentRequest):
     )
 
     final_text = ""
-    async for event in _runner.run_async(
-        user_id="api",
-        session_id=session.id,
-        new_message=user_content,
-    ):
-        if event.is_final_response() and event.content and event.content.parts:
-            for part in event.content.parts:
-                if part.text:
-                    final_text += part.text
+    agent_error = None
+    try:
+        async for event in _runner.run_async(
+            user_id="api",
+            session_id=session.id,
+            new_message=user_content,
+        ):
+            if event.is_final_response():
+                if event.error_code:
+                    agent_error = f"Agent error [{event.error_code}]: {event.error_message or 'unknown'}"
+                    logger.warning(
+                        "Agent error event for %s: %s", api_number, agent_error
+                    )
+                if event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if part.text:
+                            final_text += part.text
+    except Exception as exc:
+        agent_error = f"Agent runner exception: {exc}"
+        logger.error("Agent runner failed for %s: %s", api_number, exc, exc_info=True)
 
     if not final_text:
-        raise HTTPException(status_code=500, detail="Agent returned no response")
+        logger.warning(
+            "No agent response for %s: %s",
+            api_number,
+            agent_error or "empty final text",
+        )
+        return WellfileAgentResponse(
+            api_number=api_number,
+            extraction_status="FAILED_PARSING",
+            cache_hit=False,
+        )
 
     result = _parse_agent_response(api_number, final_text)
     return result

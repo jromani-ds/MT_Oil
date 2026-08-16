@@ -9,6 +9,8 @@ from google.genai import types
 
 from mt_oil.agents.tools.document import wellfile_document_tool
 from mt_oil.agents.tools.production import bq_production_tool
+from mt_oil.config import settings
+from mt_oil.schemas.wellfile import WellfileAgentResponse
 
 INSTRUCTION = """You are a petroleum engineering analyst. Your job is to analyze a well's completion and production data.
 
@@ -25,11 +27,12 @@ and set extraction_status accordingly.
 """
 
 wellfile_agent = Agent(
-    model="gemini-2.5-flash-lite",
+    model=settings.vertex_ai_model,
     name="wellfile_agent",
     description="Extracts wellfile completion parameters and production data, computes completion intensity metrics.",
     instruction=INSTRUCTION,
     tools=[wellfile_document_tool, bq_production_tool],
+    output_schema=WellfileAgentResponse,
     generate_content_config=types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",

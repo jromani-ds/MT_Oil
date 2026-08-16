@@ -310,7 +310,11 @@ def wellfile_document_tool(api_number: str) -> dict:
             **cached,
         }
 
-    pdf_bytes = _read_pdf_from_gcs(api_number)
+    pdf_bytes = None
+    try:
+        pdf_bytes = _read_pdf_from_gcs(api_number)
+    except Exception as exc:
+        logger.error("GCS read failed for %s: %s", api_number, exc)
     if pdf_bytes is None:
         timer.__exit__()
         emit_agent_telemetry(
