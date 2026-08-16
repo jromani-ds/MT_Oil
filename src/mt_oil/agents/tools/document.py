@@ -114,21 +114,94 @@ def pd_notnull(val) -> bool:
         return val is not None
 
 
-def _read_pdf_from_gcs(api_number: str) -> Optional[bytes]:
-    """Download the wellfile PDF from GCS and return raw bytes."""
+BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/125.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
+    "image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Cache-Control": "no-cache",
+    "Referer": "https://bogfiles.dnrc.mt.gov/",
+}
+
+
+def _state_pdf_url(api_number: str) -> str | None:
+    api_10 = api_number.strip()[:10]
+    if len(api_10) < 10:
+        return None
+    return f"https://bogfiles.dnrc.mt.gov/Well_Data/{api_10}/{api_10}.pdf"
+
+
+def _download_pdf_bytes(api_number: str) -> bytes | None:
+    """Download a wellfile PDF from the state DNRC server."""
+    url = _state_pdf_url(api_number)
+    if url is None:
+        return None
+    from urllib.error import HTTPError, URLError
+    from urllib.request import Request, urlopen
+
+    req = Request(url, headers=BROWSER_HEADERS)
+    try:
+        with urlopen(req, timeout=60) as resp:
+            ct = (resp.headers.get("Content-Type") or "").lower()
+            if "application/pdf" not in ct:
+                logger.warning(
+                    "State PDF for %s: Content-Type=%s (not PDF)", api_number, ct
+                )
+                return None
+            data = resp.read()
+            if not data:
+                logger.warning("State PDF for %s: empty response", api_number)
+                return None
+            return data
+    except HTTPError as e:
+        if e.code == 404:
+            logger.warning("State PDF not found (404) for %s", api_number)
+        else:
+            logger.warning("State download failed for %s: HTTP %s", api_number, e.code)
+        return None
+    except (URLError, OSError) as e:
+        logger.warning("State download failed for %s: %s", api_number, e)
+        return None
+
+
+def _cache_pdf_to_gcs(api_number: str, pdf_bytes: bytes) -> None:
+    """Upload a PDF to GCS so it's available for future requests."""
+    if not settings.gcp_project_id or not settings.gcs_data_bucket:
+        return
+    try:
+        client = storage.Client(project=settings.gcp_project_id or None)
+        bucket = client.bucket(settings.gcs_data_bucket)
+        blob = bucket.blob(_gcs_blob_name(api_number))
+        blob.upload_from_string(pdf_bytes, content_type="application/pdf")
+        logger.info("Cached state PDF to GCS for %s", api_number)
+    except Exception as exc:
+        logger.warning("Failed to cache PDF to GCS for %s: %s", api_number, exc)
+
+
+def _read_pdf(api_number: str) -> Optional[bytes]:
+    """Download the wellfile PDF from GCS, falling back to the state DNRC server."""
     client = storage.Client(project=settings.gcp_project_id or None)
     bucket = client.bucket(settings.gcs_data_bucket)
     blob = bucket.blob(_gcs_blob_name(api_number))
-    if not blob.exists():
-        logger.warning("PDF not found in GCS for %s", api_number)
-        return None
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-    blob.download_to_file(tmp)
-    tmp.close()
-    with open(tmp.name, "rb") as f:
-        data = f.read()
-    Path(tmp.name).unlink(missing_ok=True)
-    return data
+    if blob.exists():
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        blob.download_to_file(tmp)
+        tmp.close()
+        with open(tmp.name, "rb") as f:
+            data = f.read()
+        Path(tmp.name).unlink(missing_ok=True)
+        return data
+
+    logger.warning("PDF not found in GCS for %s, attempting state download", api_number)
+    pdf_bytes = _download_pdf_bytes(api_number)
+    if pdf_bytes is not None:
+        _cache_pdf_to_gcs(api_number, pdf_bytes)
+    return pdf_bytes
 
 
 def _extract_with_gemini(api_number: str, pdf_bytes: bytes) -> dict:
@@ -312,7 +385,7 @@ def wellfile_document_tool(api_number: str) -> dict:
 
     pdf_bytes = None
     try:
-        pdf_bytes = _read_pdf_from_gcs(api_number)
+        pdf_bytes = _read_pdf(api_number)
     except Exception as exc:
         logger.error("GCS read failed for %s: %s", api_number, exc)
     if pdf_bytes is None:
