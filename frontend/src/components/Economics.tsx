@@ -1,6 +1,6 @@
 import type { EconomicMetrics, Well, WellfileResponse } from '../api/client';
 import { DollarSign, Loader2 } from 'lucide-react';
-import { formatCurrency, formatMultiplier, formatDuration, formatVolume } from '../utils/format';
+import { formatCurrency, formatMultiplier, formatDuration, formatVolume, formatGasVolume } from '../utils/format';
 import { KpiCard } from './KpiCard';
 
 interface EconParams {
@@ -103,7 +103,7 @@ export function Economics({
           </div>
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <KpiCard
               label="NPV (10%)"
               value={formatCurrency(economics.NPV)}
@@ -121,9 +121,19 @@ export function Economics({
               colorScheme="purple"
             />
             <KpiCard
-              label="EUR"
+              label="EUR (BOE)"
               value={formatVolume(economics.EUR)}
               colorScheme="orange"
+            />
+            <KpiCard
+              label="EUR Oil"
+              value={economics.EUR_Oil != null ? formatVolume(economics.EUR_Oil) : '—'}
+              colorScheme="blue"
+            />
+            <KpiCard
+              label="EUR Gas"
+              value={economics.EUR_Gas != null ? formatGasVolume(economics.EUR_Gas) : '—'}
+              colorScheme="green"
             />
           </div>
 
@@ -142,6 +152,18 @@ export function Economics({
                   step={0.5}
                   value={econParams.oilPrice}
                   onChange={(e) => onParamChange({ ...econParams, oilPrice: parseFloat(e.target.value) || 0 })}
+                  className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-700" htmlFor="gas-price">Gas Price ($/MCF)</label>
+                <input
+                  id="gas-price"
+                  type="number"
+                  min={0}
+                  step={0.25}
+                  value={econParams.gasPrice}
+                  onChange={(e) => onParamChange({ ...econParams, gasPrice: parseFloat(e.target.value) || 0 })}
                   className="px-3 py-2 bg-white border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500"
                 />
               </div>

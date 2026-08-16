@@ -38,6 +38,7 @@ export interface Forecast {
 
 export interface DeclineResponse {
     historical_data_points: number;
+    stream?: 'oil' | 'gas';
     fit: DeclineFit;
     forecast: Forecast;
 }
@@ -47,6 +48,8 @@ export interface EconomicMetrics {
     ROI: number;
     Payout_Months: number;
     EUR: number;
+    EUR_Oil?: number;
+    EUR_Gas?: number;
 }
 
 export interface FilterOptions {
@@ -109,7 +112,7 @@ export const runEconomics = async (
     opex: number,
     discountRate: number,
     abandonmentRate: number,
-    gasPrice: number = 3.5
+    gasPrice: number = 2.5
 ): Promise<EconomicMetrics> => {
     const response = await api.post<EconomicMetrics>(`/wells/${apiNumber}/economics`, null, {
         params: {

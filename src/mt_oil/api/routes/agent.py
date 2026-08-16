@@ -61,6 +61,8 @@ def _build_production_summary(prod: dict) -> ProductionSummary:
         total_months=int(prod.get("total_months", 0) or 0),
         peak_oil_bbls=float(prod.get("peak_oil_bbls", 0) or 0),
         peak_gas_mcf=float(prod.get("peak_gas_mcf", 0) or 0),
+        total_oil_bbls=float(prod.get("total_oil_bbls", 0) or 0),
+        total_gas_mcf=float(prod.get("total_gas_mcf", 0) or 0),
         eur_boe=prod.get("eur_boe"),
         dca_method=prod.get("dca_method"),
     )

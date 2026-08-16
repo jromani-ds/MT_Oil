@@ -20,6 +20,10 @@ export function formatVolume(bbl: number): string {
   return `${(bbl / 1000).toFixed(1)}k bbl`;
 }
 
+export function formatGasVolume(mcf: number): string {
+  return `${(mcf / 1000).toFixed(1)}k MCF`;
+}
+
 export function formatCoordinate(value: number): string {
   return value.toFixed(4);
 }

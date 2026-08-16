@@ -395,6 +395,12 @@ class ProductionSummary(BaseModel):
     )
     peak_oil_bbls: float = Field(default=0, description="Peak monthly oil production")
     peak_gas_mcf: float = Field(default=0, description="Peak monthly gas production")
+    total_oil_bbls: float = Field(
+        default=0, description="Total cumulative oil production"
+    )
+    total_gas_mcf: float = Field(
+        default=0, description="Total cumulative gas production"
+    )
     eur_boe: Optional[float] = Field(
         None, description="Estimated ultimate recovery in BOE"
     )

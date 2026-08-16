@@ -58,3 +58,34 @@ def test_economics_negative_case():
     )
     assert res["NPV"] < 0
     assert res["Payout_Months"] == -1
+
+
+def test_economics_gas_price_default():
+    """Default gas price should be 2.5."""
+    import inspect
+
+    sig = inspect.signature(calculate_npv)
+    assert sig.parameters["gas_price"].default == 2.5
+
+
+def test_economics_gas_only_well():
+    """Gas-only well should produce positive NPV with BOE-based abandonment."""
+    oil = [0, 0, 0]
+    gas = [5000, 4000, 3000]
+    res = calculate_npv(
+        production_forecast_oil=oil,
+        production_forecast_gas=gas,
+        oil_price=70.0,
+        gas_price=2.5,
+        capex=5_000,
+        opex_per_bbl=10.0,
+        discount_rate=0.0,
+        oil_diff=0,
+        gas_diff=0,
+        ad_valorem_tax=0,
+        severance_tax=0,
+        nri=1.0,
+        abandonment_rate=1.0,  # BOE/month — gas 3000 MCF = ~517 BOE, well above limit
+    )
+    assert res["NPV"] > 0
+    assert res["EUR_Gas"] == pytest.approx(12000.0)

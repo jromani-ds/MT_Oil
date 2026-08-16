@@ -7,7 +7,7 @@ def calculate_npv(
     historical_production_oil: List[float] = [],
     historical_production_gas: List[float] = [],
     oil_price: float = 70.0,
-    gas_price: float = 3.5,
+    gas_price: float = 2.5,
     discount_rate: float = 0.10,
     capex: float = 6_000_000,
     opex_per_bbl: float = 10.0,
@@ -63,8 +63,9 @@ def calculate_npv(
     for month, (oil_vol, gas_vol) in enumerate(
         zip(full_oil_stream, full_gas_stream), 1
     ):
-        # Abandonment Check (Economic Limit based on oil production)
-        if oil_vol < abandonment_rate:
+        # Abandonment Check (Economic Limit based on BOE)
+        boe = oil_vol + (gas_vol / 5.8)
+        if boe < abandonment_rate:
             break
 
         total_oil_eur += oil_vol
