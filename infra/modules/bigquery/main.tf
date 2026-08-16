@@ -171,6 +171,7 @@ resource "google_bigquery_table" "wellfile_parsed_metadata" {
     { name = "input_tokens", type = "INT64", mode = "NULLABLE" },
     { name = "output_tokens", type = "INT64", mode = "NULLABLE" },
     { name = "latency_ms", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "payload", type = "JSON", mode = "NULLABLE" },
   ])
 
   depends_on = [google_bigquery_dataset.this]
