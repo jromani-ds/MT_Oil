@@ -16,6 +16,20 @@ def test_get_wells(client):
     assert "API_WellNo" in data[0]
 
 
+def test_well_search(client):
+    response = client.get("/wells?search=3000000000")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) >= 1
+    assert any("3000000000" in w["API_WellNo"] for w in data)
+
+
+def test_well_search_no_match(client):
+    response = client.get("/wells?search=ZZZZZ")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_well_details(client):
     # Fetch a list first to get a valid ID
     wells = client.get("/wells?limit=1").json()
@@ -76,3 +90,49 @@ def test_wellfile_url(client):
 def test_wellfile_url_unknown_well(client):
     response = client.get("/wells/9999999999/wellfile")
     assert response.status_code == 404
+
+
+def test_gas_well_decline(client):
+    """Gas-only wells should return stream='gas' in decline response."""
+    wells = client.get("/wells?limit=50").json()
+    gas_api = None
+    for w in wells:
+        if w.get("Type") == "GAS":
+            prod = client.get(f"/wells/{w['API_WellNo']}/production").json()
+            if len(prod) > 0 and all(r["BBLS_OIL_COND"] == 0 for r in prod):
+                gas_api = w["API_WellNo"]
+                break
+
+    if not gas_api:
+        pytest.skip("No gas well found")
+
+    r = client.post(f"/wells/{gas_api}/decline?method=auto")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["stream"] == "gas"
+    assert len(data["forecast"]["production"]) == 24
+
+
+def test_gas_well_economics(client):
+    """Economics on a gas well should return EUR_Gas and positive NPV."""
+    wells = client.get("/wells?limit=50").json()
+    gas_api = None
+    for w in wells:
+        if w.get("Type") == "GAS":
+            prod = client.get(f"/wells/{w['API_WellNo']}/production").json()
+            if len(prod) > 12 and all(r["BBLS_OIL_COND"] == 0 for r in prod):
+                gas_api = w["API_WellNo"]
+                break
+
+    if not gas_api:
+        pytest.skip("No gas well with sufficient production found")
+
+    # Use a low abandonment rate (BOE/day) so gas BOE passes the threshold
+    r = client.post(
+        f"/wells/{gas_api}/economics", params={"abandonment_rate_daily": 0.5}
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert "EUR_Gas" in data
+    assert data["EUR_Gas"] > 0
+    assert data["NPV"] is not None

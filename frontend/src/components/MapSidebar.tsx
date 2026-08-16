@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import type { Well, FilterOptions, FilterParams } from '../api/client';
+import { getWells } from '../api/client';
 import type { GisLayerState } from '../GisLayers';
 import { LayerToggle } from '../LayerToggle';
-import { Filter } from 'lucide-react';
+import { Filter, Search } from 'lucide-react';
 import { formatAPI, formatCoordinate } from '../utils/format';
 
 interface MapSidebarProps {
@@ -14,6 +16,7 @@ interface MapSidebarProps {
   onToggleFilters: () => void;
   onFilterChange: (filters: FilterParams) => void;
   onToggleGisLayer: (key: keyof GisLayerState) => void;
+  onSelectWell?: (well: Well) => void;
 }
 
 export function MapSidebar({
@@ -26,9 +29,77 @@ export function MapSidebar({
   onToggleFilters,
   onFilterChange,
   onToggleGisLayer,
+  onSelectWell,
 }: MapSidebarProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Well[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const handleSearch = async () => {
+    const q = searchQuery.trim();
+    if (!q) return;
+    setSearching(true);
+    try {
+      const results = await getWells({ search: q, limit: 8, hasProduction: false });
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearch();
+  };
+
+  const handleSelect = (well: Well) => {
+    setSearchResults([]);
+    setSearchQuery('');
+    onSelectWell?.(well);
+  };
+
   return (
     <div id="map-sidebar" className="w-72 lg:w-80 p-4 flex flex-col gap-4 overflow-y-auto border-r border-gray-200 bg-white min-h-0">
+      {/* Search Card */}
+      <div className="bg-gray-50 rounded-lg shadow-sm p-4 border border-gray-200">
+        <h3 className="font-bold text-gray-700 flex items-center gap-2 mb-2">
+          <Search className="w-4 h-4" /> Find Well
+        </h3>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="API number..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 bg-white"
+          />
+          <button
+            onClick={handleSearch}
+            disabled={searching}
+            className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            {searching ? '...' : 'Go'}
+          </button>
+        </div>
+        {searchResults.length > 0 && (
+          <ul className="mt-2 border border-gray-200 rounded bg-white divide-y divide-gray-100 max-h-48 overflow-y-auto">
+            {searchResults.map((w) => (
+              <li key={w.API_WellNo}>
+                <button
+                  onClick={() => handleSelect(w)}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+                >
+                  <span className="font-mono text-gray-800">{formatAPI(w.API_WellNo)}</span>
+                  {w.Type && <span className="ml-2 text-xs text-gray-500">({w.Type})</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* Filters Card */}
       <div className="bg-gray-50 rounded-lg shadow-sm p-4 border border-gray-200">
         <div
