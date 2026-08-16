@@ -255,7 +255,7 @@ class TestWellfileExtraction:
         assert result.get("tvd_ft") == 10450.0
 
     @patch("mt_oil.agents.tools.document._check_bq_cache")
-    @patch("mt_oil.agents.tools.document._read_pdf_from_gcs")
+    @patch("mt_oil.agents.tools.document._read_pdf")
     def test_extract_pdf_not_found(self, mock_read, mock_check):
         mock_check.return_value = None
         mock_read.return_value = None
