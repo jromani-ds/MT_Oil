@@ -39,7 +39,17 @@ def bq_production_tool(api_number: str) -> dict:
     if loader is None:
         return {"error": "BigQuery not configured", "total_months": 0}
 
-    df = loader.load_production_for_well(api_number)
+    try:
+        df = loader.load_production_for_well(api_number)
+    except Exception as exc:
+        logger.error("BigQuery query failed for %s: %s", api_number, exc)
+        return {
+            "total_months": 0,
+            "peak_oil_bbls": 0,
+            "peak_gas_mcf": 0,
+            "eur_boe": None,
+            "dca_method": None,
+        }
     if df.empty:
         return {
             "total_months": 0,
