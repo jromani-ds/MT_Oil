@@ -242,6 +242,7 @@ def get_wells(
     limit: int = 100,
     skip: int = 0,
     has_production: bool = False,
+    search: Optional[str] = None,
     formation: Optional[str] = None,
     well_type: Optional[str] = None,
     slant: Optional[str] = None,
@@ -250,6 +251,9 @@ def get_wells(
         raise HTTPException(status_code=503, detail="Data not loaded")
 
     df = db.well_df.reset_index()
+
+    if search:
+        df = df[df["API_WellNo"].str.contains(search, case=False, na=False)]
 
     if has_production:
         if db.producing_wells_set is None:
@@ -381,7 +385,20 @@ def fit_decline_curve(
         raise HTTPException(status_code=404, detail="No production history found")
 
     df = pd.DataFrame(prod_hist)
-    df = df[df["BBLS_OIL_COND"] > 0].reset_index(drop=True)
+
+    # Determine primary stream
+    total_oil = df["BBLS_OIL_COND"].sum()
+    total_gas = df["MCF_GAS"].sum()
+    if total_oil > 0:
+        stream = "oil"
+        df = df[df["BBLS_OIL_COND"] > 0].reset_index(drop=True)
+        rate_col = "BBLS_OIL_COND"
+    elif total_gas > 0:
+        stream = "gas"
+        df = df[df["MCF_GAS"] > 0].reset_index(drop=True)
+        rate_col = "MCF_GAS"
+    else:
+        raise HTTPException(status_code=400, detail="No production data")
 
     if len(df) < 6:
         raise HTTPException(
@@ -390,13 +407,18 @@ def fit_decline_curve(
 
     df["Month_Index"] = (df["Rpt_Date"] - df["Rpt_Date"].min()).dt.days // 30 + 1
     t_months = df["Month_Index"].values
-    q_oil = df["BBLS_OIL_COND"].values
+    q = df[rate_col].values
 
-    best_fit = fit_best_decline(t_months, q_oil, method=method)
+    best_fit = fit_best_decline(t_months, q, method=method)
 
-    # ML Constrained Logic (Fine-Tuning)
+    # ML Constrained Logic (Fine-Tuning) — oil only
     predicted_boe_eur = None
-    if db.ml_model and db.merged_df is not None and api_number in db.merged_df.index:
+    if (
+        stream == "oil"
+        and db.ml_model
+        and db.merged_df is not None
+        and api_number in db.merged_df.index
+    ):
         if len(df) <= 12:
             try:
                 X_well = db.merged_df.loc[[api_number]].drop("BOE", axis=1)
@@ -430,6 +452,7 @@ def fit_decline_curve(
         return obj
 
     metrics = {
+        "stream": stream,
         "historical_data_points": int(len(df)),
         "fit": to_native(best_fit),
         "forecast": {"months": forecast_t.tolist(), "production": forecast_q.tolist()},
@@ -447,7 +470,7 @@ def run_economics(
     request: Request,
     api_number: str,
     oil_price: float = 70.0,
-    gas_price: float = 3.5,
+    gas_price: float = 2.5,
     discount_rate: float = 0.10,
     capex: float = 6000000.0,
     opex: float = 10.0,
@@ -457,7 +480,9 @@ def run_economics(
     if not fit_res["forecast"]["production"]:
         raise HTTPException(status_code=400, detail="Could not forecast production")
 
-    forecast_oil_prod = fit_res["forecast"]["production"]
+    stream = fit_res.get("stream", "oil")
+    forecast_prod = fit_res["forecast"]["production"]
+
     prod_hist = (
         _fetch_production_from_bq(api_number)
         if db.bq_available()
@@ -469,14 +494,18 @@ def run_economics(
     ]
     historical_gas_prod = [r["MCF_GAS"] for r in prod_hist if r["MCF_GAS"] is not None]
 
-    if historical_oil_prod and historical_gas_prod:
-        total_hist_oil = sum(historical_oil_prod)
-        total_hist_gas = sum(historical_gas_prod)
-        gor = total_hist_gas / total_hist_oil if total_hist_oil > 0 else 0
+    if stream == "oil":
+        forecast_oil_prod = forecast_prod
+        if historical_oil_prod and historical_gas_prod:
+            total_hist_oil = sum(historical_oil_prod)
+            total_hist_gas = sum(historical_gas_prod)
+            gor = total_hist_gas / total_hist_oil if total_hist_oil > 0 else 0
+        else:
+            gor = 0
+        forecast_gas_prod = [v * gor for v in forecast_oil_prod]
     else:
-        gor = 0
-
-    forecast_gas_prod = [oil_vol * gor for oil_vol in forecast_oil_prod]
+        forecast_oil_prod = [0.0] * len(forecast_prod)
+        forecast_gas_prod = forecast_prod
 
     abandonment_rate_monthly = abandonment_rate_daily * 30.4
 

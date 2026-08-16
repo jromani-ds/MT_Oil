@@ -47,6 +47,8 @@ def bq_production_tool(api_number: str) -> dict:
             "total_months": 0,
             "peak_oil_bbls": 0,
             "peak_gas_mcf": 0,
+            "total_oil_bbls": 0,
+            "total_gas_mcf": 0,
             "eur_boe": None,
             "dca_method": None,
         }
@@ -55,16 +57,28 @@ def bq_production_tool(api_number: str) -> dict:
             "total_months": 0,
             "peak_oil_bbls": 0,
             "peak_gas_mcf": 0,
+            "total_oil_bbls": 0,
+            "total_gas_mcf": 0,
             "eur_boe": None,
             "dca_method": None,
         }
 
-    df = df[df["BBLS_OIL_COND"] > 0].reset_index(drop=True)
-    if df.empty:
+    total_oil = df["BBLS_OIL_COND"].sum()
+    total_gas = df["MCF_GAS"].sum()
+
+    if total_oil > 0:
+        df = df[df["BBLS_OIL_COND"] > 0].reset_index(drop=True)
+        rate_col = "BBLS_OIL_COND"
+    elif total_gas > 0:
+        df = df[df["MCF_GAS"] > 0].reset_index(drop=True)
+        rate_col = "MCF_GAS"
+    else:
         return {
             "total_months": 0,
             "peak_oil_bbls": 0,
             "peak_gas_mcf": 0,
+            "total_oil_bbls": 0,
+            "total_gas_mcf": 0,
             "eur_boe": None,
             "dca_method": None,
         }
@@ -73,6 +87,8 @@ def bq_production_tool(api_number: str) -> dict:
         "total_months": int(len(df)),
         "peak_oil_bbls": float(df["BBLS_OIL_COND"].max()),
         "peak_gas_mcf": float(df["MCF_GAS"].max()),
+        "total_oil_bbls": float(df["BBLS_OIL_COND"].sum()),
+        "total_gas_mcf": float(df["MCF_GAS"].sum()),
         "eur_boe": None,
         "dca_method": None,
     }
@@ -83,9 +99,9 @@ def bq_production_tool(api_number: str) -> dict:
                 df["Rpt_Date"] - df["Rpt_Date"].min()
             ).dt.days // 30 + 1
             t_months = df["Month_Index"].values.astype(float)
-            q_oil = df["BBLS_OIL_COND"].values.astype(float)
+            q = df[rate_col].values.astype(float)
 
-            best_fit = fit_best_decline(t_months, q_oil, method="auto")
+            best_fit = fit_best_decline(t_months, q, method="auto")
             if best_fit["method"]:
                 result["dca_method"] = best_fit["method"]
                 FORECAST_MONTHS = 24
@@ -104,7 +120,7 @@ def bq_production_tool(api_number: str) -> dict:
                 else:
                     forecast_q = np.zeros_like(forecast_t)
 
-                result["eur_boe"] = float(np.sum(forecast_q) + np.sum(q_oil))
+                result["eur_boe"] = float(np.sum(forecast_q) + np.sum(q))
         except Exception as exc:
             logger.warning("DCA fitting failed for %s: %s", api_number, exc)
 

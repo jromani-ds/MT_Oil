@@ -38,12 +38,13 @@ def seed_mock_data():
     prod_rows = []
     for api in db.well_df.index:
         for i, d in enumerate(dates):
+            is_gas = db.well_df.loc[api, "Type"] == "GAS"
             prod_rows.append(
                 {
                     "API_WellNo": api,
                     "Rpt_Date": d,
                     "ST_FMTN_CD": db.well_df.loc[api, "ST_FMTN_CD"],
-                    "BBLS_OIL_COND": 1000 - i * 20,
+                    "BBLS_OIL_COND": 0 if is_gas else 1000 - i * 20,
                     "MCF_GAS": 500 - i * 10,
                     "BBLS_WTR": 50,
                     "DAYS_PROD": 30,

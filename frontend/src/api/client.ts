@@ -14,6 +14,7 @@ export interface Well {
     Lat: number;
     Long: number;
     Slant?: string;
+    Type?: string;
 }
 
 export interface ProductionRecord {
@@ -37,6 +38,7 @@ export interface Forecast {
 
 export interface DeclineResponse {
     historical_data_points: number;
+    stream?: 'oil' | 'gas';
     fit: DeclineFit;
     forecast: Forecast;
 }
@@ -46,6 +48,8 @@ export interface EconomicMetrics {
     ROI: number;
     Payout_Months: number;
     EUR: number;
+    EUR_Oil?: number;
+    EUR_Gas?: number;
 }
 
 export interface FilterOptions {
@@ -58,6 +62,7 @@ export interface FilterParams {
     limit?: number;
     skip?: number;
     hasProduction?: boolean;
+    search?: string;
     formation?: string;
     wellType?: string;
     slant?: string;
@@ -74,13 +79,14 @@ export const getFilterOptions = async (): Promise<FilterOptions> => {
 };
 
 export const getWells = async (params: FilterParams = {}): Promise<Well[]> => {
-    const { limit = 100, skip = 0, hasProduction = false, formation, wellType, slant } = params;
+    const { limit = 100, skip = 0, hasProduction = false, search, formation, wellType, slant } = params;
     const queryParams = new URLSearchParams({
         limit: limit.toString(),
         skip: skip.toString(),
         has_production: hasProduction.toString(),
     });
 
+    if (search) queryParams.append('search', search);
     if (formation) queryParams.append('formation', formation);
     if (wellType) queryParams.append('well_type', wellType);
     if (slant) queryParams.append('slant', slant);
@@ -106,7 +112,7 @@ export const runEconomics = async (
     opex: number,
     discountRate: number,
     abandonmentRate: number,
-    gasPrice: number = 3.5
+    gasPrice: number = 2.5
 ): Promise<EconomicMetrics> => {
     const response = await api.post<EconomicMetrics>(`/wells/${apiNumber}/economics`, null, {
         params: {
