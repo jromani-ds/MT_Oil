@@ -6,15 +6,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mt_oil.jobs.pdf_fetch import (
-    _get_bq_api_numbers,
-    _pdf_url,
-    _gcs_blob_name,
-    _head_pdf,
     _download_pdf,
+    _gcs_blob_name,
     _gcs_pdf_size,
-    _upload_pdf,
+    _get_bq_api_numbers,
+    _head_pdf,
     _load_progress,
+    _pdf_url,
     _process_well,
+    _upload_pdf,
     run,
 )
 

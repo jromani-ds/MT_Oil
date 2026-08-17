@@ -4,6 +4,8 @@ import type { Well, WellfileResponse, WellfileAnalysisResponse } from '../api/cl
 import { FileSearch, Loader2, AlertTriangle, CheckCircle, Database, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatCompactNumber, formatVolume } from '../utils/format';
 import { KpiCard } from './KpiCard';
+import { ReconciledStimulationPanel } from './ReconciledStimulationPanel';
+import { DiagnosticsPanel } from './DiagnosticsPanel';
 
 interface WellfileAnalysisProps {
     selectedWell: Well | null;
@@ -709,6 +711,19 @@ export function WellfileAnalysis({ selectedWell, loading, analysis, wellfileUrl,
                             </CollapsibleSection>
                         </div>
                     )}
+
+                    {/* ── Reconciled Stimulation Panel ── */}
+                    <div className="mt-8 border-t border-gray-200 pt-6">
+                        <ReconciledStimulationPanel apiNumber={analysis.api_number} />
+                    </div>
+
+                    {/* ── Deep Diagnostics Panel (on-demand) ── */}
+                    <div className="mt-6 border-t border-gray-200 pt-6">
+                        <DiagnosticsPanel
+                            apiNumber={analysis.api_number}
+                            selectedWell={selectedWell}
+                        />
+                    </div>
 
                     {/* Loading overlay for subsequent re-analysis */}
                     {loading && (

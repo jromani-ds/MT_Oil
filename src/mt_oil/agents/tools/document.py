@@ -29,6 +29,11 @@ from mt_oil.schemas.wellfile import (
     GeologyData,
     CasingCementData,
     DrillingData,
+    DiagnosticData,
+    WaterAnalysis,
+    FluidPvt,
+    FlowbackData,
+    DirectionalSurvey,
 )
 
 logger = logging.getLogger(__name__)
@@ -444,6 +449,86 @@ def _extract_drilling_with_retry(api_number: str, pdf_bytes: bytes) -> dict:
     )
 
 
+# -- Priority 5a: Diagnostics (DFIT / stress / step-rate) --
+# Priority 5b: Water chemistry
+# Priority 5c: Fluid PVT / gas composition
+# Priority 5d: Flowback / load recovery
+# Priority 5e: Directional survey
+
+DIAGNOSTICS_PROMPT = _load_prompt("diagnostics")
+WATER_CHEMISTRY_PROMPT = _load_prompt("water_chemistry")
+FLUID_PVT_PROMPT = _load_prompt("fluid_pvt")
+FLOWBACK_PROMPT = _load_prompt("flowback")
+DIRECTIONAL_SURVEY_PROMPT = _load_prompt("directional_survey")
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    reraise=True,
+)
+def _extract_diagnostics_with_retry(api_number: str, pdf_bytes: bytes) -> dict:
+    return _extract_section(
+        api_number,
+        pdf_bytes,
+        DiagnosticData,
+        DIAGNOSTICS_PROMPT.format(api_number=api_number),
+    )
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    reraise=True,
+)
+def _extract_water_chemistry_with_retry(api_number: str, pdf_bytes: bytes) -> dict:
+    return _extract_section(
+        api_number,
+        pdf_bytes,
+        WaterAnalysis,
+        WATER_CHEMISTRY_PROMPT.format(api_number=api_number),
+    )
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    reraise=True,
+)
+def _extract_fluid_pvt_with_retry(api_number: str, pdf_bytes: bytes) -> dict:
+    return _extract_section(
+        api_number, pdf_bytes, FluidPvt, FLUID_PVT_PROMPT.format(api_number=api_number)
+    )
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    reraise=True,
+)
+def _extract_flowback_with_retry(api_number: str, pdf_bytes: bytes) -> dict:
+    return _extract_section(
+        api_number,
+        pdf_bytes,
+        FlowbackData,
+        FLOWBACK_PROMPT.format(api_number=api_number),
+    )
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    reraise=True,
+)
+def _extract_survey_with_retry(api_number: str, pdf_bytes: bytes) -> dict:
+    return _extract_section(
+        api_number,
+        pdf_bytes,
+        DirectionalSurvey,
+        DIRECTIONAL_SURVEY_PROMPT.format(api_number=api_number),
+    )
+
+
 # ---- ADK tool functions ------------------------------------------------------
 
 
@@ -561,6 +646,51 @@ def wellfile_drilling_tool(api_number: str) -> dict:
         api_number,
         "drilling",
         _extract_drilling_with_retry,
+    )
+
+
+def wellfile_diagnostics_tool(api_number: str) -> dict:
+    """Extract diagnostic / rock mechanics data (step-rate, breakdown, closure) from a wellfile PDF."""
+    return _section_tool(
+        api_number,
+        "diagnostics",
+        _extract_diagnostics_with_retry,
+    )
+
+
+def wellfile_water_chemistry_tool(api_number: str) -> dict:
+    """Extract produced water chemistry from a wellfile PDF."""
+    return _section_tool(
+        api_number,
+        "water_chemistry",
+        _extract_water_chemistry_with_retry,
+    )
+
+
+def wellfile_fluid_pvt_tool(api_number: str) -> dict:
+    """Extract fluid PVT and gas composition from a wellfile PDF."""
+    return _section_tool(
+        api_number,
+        "fluid_pvt",
+        _extract_fluid_pvt_with_retry,
+    )
+
+
+def wellfile_flowback_tool(api_number: str) -> dict:
+    """Extract flowback and load recovery data from a wellfile PDF."""
+    return _section_tool(
+        api_number,
+        "flowback",
+        _extract_flowback_with_retry,
+    )
+
+
+def wellfile_survey_tool(api_number: str) -> dict:
+    """Extract the full directional MWD survey table (no truncation) from a wellfile PDF."""
+    return _section_tool(
+        api_number,
+        "directional_survey",
+        _extract_survey_with_retry,
     )
 
 

@@ -4,8 +4,6 @@ These replace the local-tab-file loaders in deployed / cloud environments.
 Local file loaders are still available via `mt_oil.data.loader` for development.
 """
 
-from typing import Set, Tuple
-
 import pandas as pd
 from google.cloud import bigquery
 
@@ -109,7 +107,7 @@ class BigQueryDataLoader:
         df["Rpt_Date"] = pd.to_datetime(df["Rpt_Date"])
         return df
 
-    def load_producing_wells_set(self) -> Set[str]:
+    def load_producing_wells_set(self) -> set[str]:
         """Load the set of API_WellNo that have any positive oil or gas production."""
         query = f"""
         SELECT DISTINCT api_wellno
@@ -159,10 +157,174 @@ class BigQueryDataLoader:
         ]
         return df
 
+    def load_fracfocus_well(self, api_number: str) -> dict | None:
+        """Load FracFocus aggregate + new classification columns for a single well."""
+        query = f"""
+        SELECT
+            api_wellno,
+            total_water_volume,
+            total_proppant,
+            tvd,
+            total_acid_gal,
+            proppant_breakdown,
+            additives,
+            base_fluid_type,
+            gas_n2_scf,
+            gas_co2_scf,
+            job_start_date,
+            job_end_date,
+            operator,
+            well_name
+        FROM {self._table('frac_focus')}
+        WHERE api_wellno = @api_wellno
+        LIMIT 1
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("api_wellno", "STRING", api_number)
+            ]
+        )
+        df = self.client.query(query, job_config=job_config).to_dataframe(
+            create_bqstorage_client=False
+        )
+        if df.empty:
+            return None
+
+        row = df.iloc[0]
+        proppant_breakdown = row.get("proppant_breakdown")
+        if isinstance(proppant_breakdown, str):
+            import json
+
+            proppant_breakdown = json.loads(proppant_breakdown)
+
+        additives = row.get("additives")
+        if isinstance(additives, str):
+            import json
+
+            additives = json.loads(additives)
+
+        return {
+            "total_water_volume_gal": (
+                float(row["total_water_volume"])
+                if pd.notna(row.get("total_water_volume"))
+                else None
+            ),
+            "total_proppant_lbs": (
+                float(row["total_proppant"])
+                if pd.notna(row.get("total_proppant"))
+                else None
+            ),
+            "tvd_ft": float(row["tvd"]) if pd.notna(row.get("tvd")) else None,
+            "total_acid_gal": (
+                float(row["total_acid_gal"])
+                if pd.notna(row.get("total_acid_gal"))
+                else None
+            ),
+            "proppant_breakdown": proppant_breakdown,
+            "additives": additives,
+            "base_fluid_type": (
+                str(row["base_fluid_type"])
+                if pd.notna(row.get("base_fluid_type"))
+                else None
+            ),
+            "gas_n2_scf": (
+                float(row["gas_n2_scf"]) if pd.notna(row.get("gas_n2_scf")) else None
+            ),
+            "gas_co2_scf": (
+                float(row["gas_co2_scf"]) if pd.notna(row.get("gas_co2_scf")) else None
+            ),
+            "job_start_date": (
+                str(row["job_start_date"])
+                if pd.notna(row.get("job_start_date"))
+                else None
+            ),
+            "job_end_date": (
+                str(row["job_end_date"]) if pd.notna(row.get("job_end_date")) else None
+            ),
+            "operator": str(row["operator"]) if pd.notna(row.get("operator")) else None,
+            "well_name": (
+                str(row["well_name"]) if pd.notna(row.get("well_name")) else None
+            ),
+        }
+
+    def load_fracfocus_detail(self, api_number: str) -> pd.DataFrame:
+        """Load ingredient-level FracFocus detail rows for a single well."""
+        query = f"""
+        SELECT *
+        FROM {self._table('frac_focus_detail')}
+        WHERE api_wellno = @api_wellno
+        ORDER BY job_start_date
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("api_wellno", "STRING", api_number)
+            ]
+        )
+        df = self.client.query(query, job_config=job_config).to_dataframe(
+            create_bqstorage_client=False
+        )
+        return df
+
+    def load_formation_for_well(self, api_number: str) -> str | None:
+        """Load the primary formation for a well."""
+        query = f"""
+        SELECT formation
+        FROM {self._table('wells')}
+        WHERE api_wellno = @api_wellno
+        LIMIT 1
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("api_wellno", "STRING", api_number)
+            ]
+        )
+        df = self.client.query(query, job_config=job_config).to_dataframe(
+            create_bqstorage_client=False
+        )
+        if df.empty:
+            return None
+        val = df.iloc[0].get("formation")
+        return str(val) if pd.notna(val) else None
+
+
+def load_wells_production_for_api_list(self, api_list: list[str]) -> pd.DataFrame:
+    """Load monthly production for a list of API numbers."""
+    if not api_list:
+        return pd.DataFrame()
+    placeholders = ", ".join(["@api"] * len(api_list))
+    query = f"""
+        SELECT
+            api_wellno,
+            rpt_date,
+            bbls_oil_cond,
+            mcf_gas,
+            bbls_wtr
+        FROM {self._table('production_monthly')}
+        WHERE api_wellno IN ({placeholders})
+        """
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("api", "STRING", api) for api in api_list
+        ]
+    )
+    df = self.client.query(query, job_config=job_config).to_dataframe(
+        create_bqstorage_client=False
+    )
+    df = df.rename(
+        columns={
+            "api_wellno": "API_WellNo",
+            "bbls_oil_cond": "BBLS_OIL_COND",
+            "mcf_gas": "MCF_GAS",
+            "bbls_wtr": "BBLS_WTR",
+        }
+    )
+    df["API_WellNo"] = df["API_WellNo"].astype(str)
+    return df
+
 
 def load_all_from_bigquery(
     project_id: str, dataset_id: str
-) -> Tuple[pd.DataFrame, Set[str]]:
+) -> tuple[pd.DataFrame, set[str]]:
     """Convenience helper: returns (wells_df, producing_wells_set)."""
     loader = BigQueryDataLoader(project_id, dataset_id)
     return loader.load_wells(), loader.load_producing_wells_set()

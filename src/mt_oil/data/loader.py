@@ -113,6 +113,19 @@ def pull_ff_data(
         "TVD",
         "TotalBaseWaterVolume",
         "TotalBaseNonWaterVolume",
+        # Expanded for ingredient-level classification
+        "CASNumber",
+        "IngredientName",
+        "Supplier",
+        "TradeName",
+        "IngredientMass",
+        "IngredientPercentHFJob",
+        "CalculationType",
+        "JobStartDate",
+        "JobEndDate",
+        "OperatorName",
+        "WellName",
+        "IngredientComment",
     }
     required_cols = {"APINumber", "Purpose", "MassIngredient"}
     chunksize = 200_000

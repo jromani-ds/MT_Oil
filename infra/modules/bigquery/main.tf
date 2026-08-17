@@ -85,12 +85,100 @@ resource "google_bigquery_table" "frac_focus" {
     { name = "total_proppant", type = "FLOAT64", mode = "NULLABLE" },
     { name = "td", type = "FLOAT64", mode = "NULLABLE" },
     { name = "tvd", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "total_nonwater_volume", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "total_water_volume_gal", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "total_acid_gal", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "proppant_breakdown", type = "JSON", mode = "NULLABLE" },
+    { name = "additives", type = "JSON", mode = "NULLABLE" },
+    { name = "base_fluid_type", type = "STRING", mode = "NULLABLE" },
+    { name = "gas_n2_scf", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "gas_co2_scf", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "job_end_date", type = "DATE", mode = "NULLABLE" },
+    { name = "operator", type = "STRING", mode = "NULLABLE" },
+    { name = "well_name", type = "STRING", mode = "NULLABLE" },
     { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" },
   ])
 
   lifecycle {
     ignore_changes = [schema]
   }
+}
+
+resource "google_bigquery_table" "frac_focus_detail" {
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "frac_focus_detail"
+  project             = var.project_id
+  deletion_protection = true
+
+  clustering = ["api_wellno"]
+
+  schema = jsonencode([
+    { name = "api_wellno", type = "STRING", mode = "REQUIRED" },
+    { name = "cas_number", type = "STRING", mode = "NULLABLE" },
+    { name = "ingredient_name", type = "STRING", mode = "NULLABLE" },
+    { name = "supplier", type = "STRING", mode = "NULLABLE" },
+    { name = "purpose", type = "STRING", mode = "NULLABLE" },
+    { name = "trade_name", type = "STRING", mode = "NULLABLE" },
+    { name = "mass_lbs", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "percent_hfj", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "calculation_type", type = "STRING", mode = "NULLABLE" },
+    { name = "job_start_date", type = "DATE", mode = "NULLABLE" },
+    { name = "job_end_date", type = "DATE", mode = "NULLABLE" },
+    { name = "operator", type = "STRING", mode = "NULLABLE" },
+    { name = "well_name", type = "STRING", mode = "NULLABLE" },
+    { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" },
+  ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
+
+  depends_on = [google_bigquery_dataset.this]
+}
+
+resource "google_bigquery_table" "formation_lithology" {
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "formation_lithology"
+  project             = var.project_id
+  deletion_protection = false
+
+  schema = jsonencode([
+    { name = "formation_name", type = "STRING", mode = "REQUIRED" },
+    { name = "lithology", type = "STRING", mode = "NULLABLE" },
+    { name = "is_carbonate", type = "BOOL", mode = "NULLABLE" },
+    { name = "confidence", type = "FLOAT64", mode = "NULLABLE" },
+    { name = "source", type = "STRING", mode = "NULLABLE" },
+    { name = "updated_at", type = "TIMESTAMP", mode = "REQUIRED" },
+  ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
+
+  depends_on = [google_bigquery_dataset.this]
+}
+
+resource "google_bigquery_table" "stimulation_overrides" {
+  dataset_id          = google_bigquery_dataset.this.dataset_id
+  table_id            = "stimulation_overrides"
+  project             = var.project_id
+  deletion_protection = false
+
+  clustering = ["api_number"]
+
+  schema = jsonencode([
+    { name = "api_number", type = "STRING", mode = "REQUIRED" },
+    { name = "field", type = "STRING", mode = "REQUIRED" },
+    { name = "value", type = "FLOAT64", mode = "REQUIRED" },
+    { name = "note", type = "STRING", mode = "NULLABLE" },
+    { name = "created_at", type = "TIMESTAMP", mode = "REQUIRED" },
+  ])
+
+  lifecycle {
+    ignore_changes = [schema]
+  }
+
+  depends_on = [google_bigquery_dataset.this]
 }
 
 resource "google_bigquery_table" "analysis_outputs" {

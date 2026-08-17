@@ -2,29 +2,28 @@
 
 from unittest.mock import MagicMock, patch
 
-
 from mt_oil.schemas.wellfile import (
+    BitRun,
+    CasingCementData,
+    CasingString,
+    CementEvaluation,
+    CementOperation,
     CompletionSpecs,
+    CompletionStimulationData,
+    DownholeTubulars,
+    DrillingData,
+    DrillingFluidParams,
+    FormationTop,
+    GeologyData,
+    HydrocarbonShow,
+    IpFlowTest,
+    MultiStageTool,
+    Perforation,
     ProductionSummary,
+    StimulationStage,
+    WellboreEvent,
     WellfileAgentResponse,
     WellfileExtraction,
-    IpFlowTest,
-    Perforation,
-    StimulationStage,
-    DownholeTubulars,
-    FormationTop,
-    HydrocarbonShow,
-    CasingString,
-    CementOperation,
-    MultiStageTool,
-    CementEvaluation,
-    DrillingFluidParams,
-    BitRun,
-    WellboreEvent,
-    CompletionStimulationData,
-    GeologyData,
-    CasingCementData,
-    DrillingData,
     WellfileExtractionPayload,
 )
 
@@ -624,8 +623,8 @@ class TestWriteSectionToBq:
     @patch("mt_oil.agents.tools.document.bigquery.Client")
     @patch("mt_oil.agents.tools.document._read_payload_from_bq")
     def test_write_section_merges_payload(self, mock_read, mock_bq, mock_settings):
-        from mt_oil.agents.tools.document import _write_section_to_bq
         from mt_oil.agents.telemetry import Timer
+        from mt_oil.agents.tools.document import _write_section_to_bq
 
         mock_settings.gcp_project_id = "test-project"
         mock_settings.bigquery_dataset = "test_dataset"
