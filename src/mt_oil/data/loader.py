@@ -1,5 +1,5 @@
 import zipfile
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 import shutil
 import os
 import fnmatch
@@ -84,6 +84,18 @@ def pull_well_data() -> pd.DataFrame:
             os.remove(file_name)
 
 
+BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/125.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
+    "image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
 def pull_ff_data(
     state_name: str = "Montana", keep_zip: bool = False
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -132,7 +144,8 @@ def pull_ff_data(
 
     try:
         print("Downloading FracFocus data...")
-        with urlopen(url) as response, open(file_name, "wb") as out_file:
+        req = Request(url, headers=BROWSER_HEADERS)
+        with urlopen(req, timeout=600) as response, open(file_name, "wb") as out_file:
             shutil.copyfileobj(response, out_file)
 
         registry_chunks: list[pd.DataFrame] = []

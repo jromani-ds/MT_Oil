@@ -70,6 +70,8 @@ def _build_production_summary(prod: dict) -> ProductionSummary:
 
 def _flat_from_payload(payload: dict) -> dict:
     """Extract flat CompletionSpecs-compatible fields from a payload."""
+    if not isinstance(payload, dict):
+        return {}
     cs = payload.get("completion_stimulation") or {}
     return {
         "well_name": cs.get("well_name"),

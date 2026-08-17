@@ -80,7 +80,11 @@ def get_diagnostics(
     result = _compute_all(sections)
 
     # 4. Attach well metadata
-    cs = (payload or {}).get("completion_stimulation") or {}
+    cs = (
+        (payload.get("completion_stimulation") or {})
+        if isinstance(payload, dict)
+        else {}
+    )
     result["api_number"] = api_number
     result["well_name"] = cs.get("well_name")
     result["tvd_ft"] = cs.get("tvd_ft")

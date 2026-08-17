@@ -617,6 +617,23 @@ class TestFlatFromPayload:
         assert flat["well_name"] is None
         assert flat["tvd_ft"] is None
 
+    def test_flat_from_non_dict(self):
+        from mt_oil.api.routes.agent import _flat_from_payload
+
+        assert _flat_from_payload(None) == {}
+        assert _flat_from_payload(float("nan")) == {}
+        assert _flat_from_payload("not a dict") == {}
+
+
+class TestCheckBqCacheSectionNaN:
+    @patch("mt_oil.agents.tools.document._read_payload_from_bq")
+    def test_check_bq_cache_section_returns_none_on_nan_payload(self, mock_read):
+        mock_read.return_value = float("nan")
+        from mt_oil.agents.tools.document import _check_bq_cache_section
+
+        result = _check_bq_cache_section("2508323399", "completion_stimulation")
+        assert result is None
+
 
 class TestWriteSectionToBq:
     @patch("mt_oil.agents.tools.document.settings")
