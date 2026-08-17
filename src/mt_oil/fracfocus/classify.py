@@ -152,7 +152,7 @@ def classify_acids(
 ) -> bool:
     if cas and cas in ACID_CAS_SET:
         return True
-    if purpose and "acid" in purpose.lower():
+    if isinstance(purpose, str) and "acid" in purpose.lower():
         return True
     return bool(
         ingredient
@@ -176,7 +176,7 @@ def detect_acid_formulation(
 def classify_proppant_category(
     purpose: str | None, ingredient: str | None, cas: str | None
 ) -> str | None:
-    if purpose and purpose.lower() != "proppant":
+    if isinstance(purpose, str) and purpose.lower() != "proppant":
         return None
     if cas:
         if cas in SILICA_CAS_SET:
@@ -223,7 +223,7 @@ def classify_additive(
             return "crosslinker"
         if cas in SURFACTANT_CAS:
             return "surfactant"
-    if purpose:
+    if isinstance(purpose, str):
         purpose_lower = purpose.lower()
         if "friction" in purpose_lower:
             return "friction_reducer"
@@ -316,4 +316,4 @@ def is_diverter_ingredient(purpose: str | None, ingredient: str | None) -> bool:
         for kw in DIVERTER_KEYWORDS:
             if kw in ingredient.lower():
                 return True
-    return bool(purpose and "divert" in purpose.lower())
+    return bool(isinstance(purpose, str) and "divert" in purpose.lower())

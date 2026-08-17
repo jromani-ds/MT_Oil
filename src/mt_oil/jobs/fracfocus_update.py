@@ -146,6 +146,14 @@ def _build_aggregate_df(
 
     merged["ingested_at"] = datetime.now(UTC)
 
+    # Parse raw date strings (e.g. "3/30/2013 7:58:00 AM") to date objects
+    # for BQ DATE column compatibility.
+    for df_ in [merged, detail_df]:
+        if not df_.empty:
+            for col_ in ("job_start_date", "job_end_date"):
+                if col_ in df_.columns:
+                    df_[col_] = pd.to_datetime(df_[col_], errors="coerce").dt.date
+
     # Column order: legacy first for backward compat, new columns after
     base_cols = [
         "api_wellno",
