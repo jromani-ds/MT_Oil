@@ -18,7 +18,7 @@ from mt_oil.reconciliation.service import get_reconciled_stimulation
 
 logger = logging.getLogger(__name__)
 
-stim_limiter = Limiter(key_func=lambda r: get_remote_address(r))
+stim_limiter = Limiter(key_func=lambda request: get_remote_address(request))
 router = APIRouter(prefix="/wells/{api_number}/stimulation", tags=["stimulation"])
 
 _bq_loader: BigQueryDataLoader | None = None
