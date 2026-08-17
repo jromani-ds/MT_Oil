@@ -194,7 +194,6 @@ def _upload_df(client: bigquery.Client, df: pd.DataFrame, table_ref: str) -> Non
         table_ref,
         job_config=bigquery.LoadJobConfig(
             write_disposition="WRITE_TRUNCATE",
-            schema_update_options=["ALLOW_FIELD_ADDITION"],
         ),
     )
     job.result()
