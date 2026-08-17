@@ -1,11 +1,8 @@
-from typing import List, Dict
-
-
 def calculate_npv(
-    production_forecast_oil: List[float],
-    production_forecast_gas: List[float],
-    historical_production_oil: List[float] = [],
-    historical_production_gas: List[float] = [],
+    production_forecast_oil: list[float],
+    production_forecast_gas: list[float],
+    historical_production_oil: list[float] | None = None,
+    historical_production_gas: list[float] | None = None,
     oil_price: float = 70.0,
     gas_price: float = 2.5,
     discount_rate: float = 0.10,
@@ -17,7 +14,7 @@ def calculate_npv(
     ad_valorem_tax: float = 0.05,
     severance_tax: float = 0.05,
     abandonment_rate: float = 0.0,  # bbls per month (converted from day in caller or passed as month)
-) -> Dict:
+) -> dict:
     """
     Calculates the Net Present Value (NPV) of a well using Full Cycle Economics.
     Includes both Historical (Sunk) and Future (Forecast) production for oil and gas.
@@ -40,6 +37,10 @@ def calculate_npv(
         abandonment_rate: Economic Limit (bbl oil/month).
     """
 
+    if historical_production_gas is None:
+        historical_production_gas = []
+    if historical_production_oil is None:
+        historical_production_oil = []
     monthly_discount_rate = (1 + discount_rate) ** (1 / 12) - 1
 
     # Combine streams

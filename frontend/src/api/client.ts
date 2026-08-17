@@ -347,3 +347,180 @@ export const analyzeWellfile = async (apiNumber: string): Promise<WellfileAnalys
     });
     return response.data;
 };
+
+// ── Stimulation Panel Types ──
+
+export interface ProppantBreakdown {
+    silica_lbs?: number;
+    resin_coated_lbs?: number;
+    ceramic_lbs?: number;
+    diverter_lbs?: number;
+    other_lbs?: number;
+}
+
+export interface AdditiveProfile {
+    friction_reducer_max_pct?: number;
+    scale_inhibitor_max_pct?: number;
+    biocide_max_pct?: number;
+    crosslinker_max_pct?: number;
+    surfactant_max_pct?: number;
+}
+
+export interface GasComponent {
+    type: string;
+    volume_scf?: number;
+    mass_lbs?: number;
+    liquid_bbl?: number;
+}
+
+export interface ProvenanceTag {
+    source: string;
+    field_name: string;
+    original_value?: number;
+    original_unit?: string;
+}
+
+export interface SourceView {
+    total_clean_fluid_bbls?: number;
+    total_proppant_lbs?: number;
+    total_acid_gal?: number;
+    proppant_concentration_ppa?: number;
+    max_treating_pressure_psi?: number;
+    tvd_ft?: number;
+    provenance: ProvenanceTag[];
+}
+
+export interface VarianceReport {
+    fluid_volume_delta_pct?: number;
+    proppant_mass_delta_pct?: number;
+    acid_volume_delta_pct?: number;
+    status: string;
+    stage_resolution_note?: string;
+}
+
+export interface SanityFinding {
+    rule: string;
+    severity: string;
+    message: string;
+    raw_value?: number;
+    corrected_value?: number;
+    corrected_unit?: string;
+    note?: string;
+}
+
+export interface ReconciledStimulationResponse {
+    api_number: string;
+    well_name?: string;
+    treatment_class?: string;
+    total_clean_fluid_bbls?: number;
+    total_proppant_lbs?: number;
+    total_acid_gal?: number;
+    proppant_concentration_ppa?: number;
+    base_fluid_type?: string;
+    proppant_breakdown?: ProppantBreakdown;
+    additives?: AdditiveProfile;
+    gas_components: GasComponent[];
+    net_perforated_ft?: number;
+    acid_intensity_gal_per_ft?: number;
+    foam_quality_pct?: number;
+    glr_scf_per_bbl?: number;
+    max_treating_pressure_psi?: number;
+    state_source: SourceView;
+    fracfocus_source: SourceView;
+    variance?: VarianceReport;
+    sanity_findings: SanityFinding[];
+    badge: string;
+}
+
+export const getReconciledStimulation = async (apiNumber: string): Promise<ReconciledStimulationResponse> => {
+    const response = await api.get<ReconciledStimulationResponse>(
+        `/wells/${apiNumber}/stimulation`
+    );
+    return response.data;
+};
+
+export const setStimulationOverride = async (apiNumber: string, field: string, value: number, note?: string): Promise<{status: string}> => {
+    const response = await api.post(`/wells/${apiNumber}/stimulation/override`, {
+        api_number: apiNumber,
+        field,
+        value,
+        note,
+    });
+    return response.data;
+};
+
+// ── Diagnostics Types ──
+
+export interface DiagnosticsResponse {
+    api_number: string;
+    well_name?: string;
+    extraction_status: string;
+    sections_extracted: string[];
+    stress?: {
+        sigma_hmin_psi?: number;
+        stress_gradient_psi_per_ft?: number;
+        leakoff_type?: string;
+        friction_split?: {
+            closure_pressure_psi?: number;
+            perf_friction_coef?: number;
+            nwb_tortuosity_coef?: number;
+        };
+    };
+    water_chemistry?: {
+        stiff_davis_caco3_si?: number;
+        skillman_mcdonald_caso4?: number;
+        barium_sulfate_si?: number;
+        rw_ohm_m_77F?: number;
+        scale_risk?: string;
+    };
+    pvt?: {
+        gas_specific_gravity?: number;
+        btu_scf?: number;
+        oil_viscosity_cp?: number;
+        bubble_point_psi?: number;
+    };
+    flowback?: {
+        load_recovery_pct?: number;
+        load_recovery_assessment?: { risk: string; message: string };
+        proppant_flowback?: Array<{ volume_bbls: number; mesh_size: string; risk: string; note: string }>;
+    };
+    survey?: {
+        max_dls_deg_per_100ft?: number;
+        lateral_max_dls_deg_per_100ft?: number;
+        tortuosity_hotspots?: Array<{ md_ft: number; dls_deg_per_100ft: number; note: string }>;
+        survey_points?: Array<{ md_ft: number; inclination_deg: number; azimuth_deg: number; tvd_ft?: number; dls_deg_per_100ft?: number }>;
+    };
+}
+
+export const getDiagnostics = async (apiNumber: string): Promise<DiagnosticsResponse> => {
+    const response = await api.get<DiagnosticsResponse>(`/wells/${apiNumber}/diagnostics`);
+    return response.data;
+};
+
+// ── Interference Types ──
+
+export interface InterferenceNeighbor {
+    api_number: string;
+    well_name?: string;
+    distance_ft?: number;
+    azimuth_deg?: number;
+    age_days?: number;
+    parent_ratio_pct?: number;
+    interference_index?: number;
+    risk?: string;
+    note?: string;
+}
+
+export interface InterferenceResponse {
+    api_number: string;
+    well_name?: string;
+    analyzed: boolean;
+    overall_risk?: string;
+    message?: string;
+    neighbors: InterferenceNeighbor[];
+}
+
+export const getInterference = async (apiNumber: string): Promise<InterferenceResponse> => {
+    const response = await api.get<InterferenceResponse>(`/wells/${apiNumber}/interference`);
+    return response.data;
+};

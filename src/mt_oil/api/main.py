@@ -26,6 +26,9 @@ from mt_oil.domain.decline_curve import fit_best_decline, arps_decline, duong_de
 from mt_oil.domain.economics import calculate_npv
 from mt_oil.models.pipeline import train_and_evaluate, load_model, save_model
 from mt_oil.api.routes.agent import router as agent_router
+from mt_oil.api.routes.stimulation import router as stimulation_router
+from mt_oil.api.routes.diagnostics import router as diagnostics_router
+from mt_oil.api.routes.interference import router as interference_router
 
 
 def _rate_limit_key(request: Request) -> str:
@@ -199,6 +202,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(agent_router)
+app.include_router(stimulation_router)
+app.include_router(diagnostics_router)
+app.include_router(interference_router)
 
 app.add_middleware(
     CORSMiddleware,

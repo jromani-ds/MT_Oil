@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.optimize import curve_fit
-from typing import Dict
 
 
 def arps_decline(t: np.ndarray, qi: float, di: float, b: float) -> np.ndarray:
@@ -79,7 +78,7 @@ def duong_decline(t: np.ndarray, qi: float, a: float, m: float) -> np.ndarray:
 
 def fit_best_decline(
     time_months: np.ndarray, production: np.ndarray, method: str = "auto"
-) -> Dict:
+) -> dict:
     """
     Fits decline curves to production data and returns the parameters of the best fit.
 

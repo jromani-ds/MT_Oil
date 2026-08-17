@@ -63,6 +63,12 @@ class StimulationStage(BaseModel):
     fluid_volume_bbls: Optional[float] = Field(
         None, description="Fluid volume in barrels"
     )
+    proppant_lbs: Optional[float] = Field(
+        None, description="Proppant mass for this stage in pounds"
+    )
+    acid_volume_gal: Optional[float] = Field(
+        None, description="Acid volume for this stage in gallons"
+    )
     chemical_additives: Optional[str] = Field(
         None, description="Chemical additives / concentrations"
     )
@@ -346,11 +352,153 @@ class DrillingData(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Priority 5: Diagnostics (DFIT / stress, water chemistry, PVT, flowback, survey)
+# ---------------------------------------------------------------------------
+
+
+class StepRateTest(BaseModel):
+    rate_bpm: Optional[float] = Field(
+        None, description="Pump rate in barrels per minute"
+    )
+    isip_psi: Optional[float] = Field(None, description="ISIP at this rate in PSI")
+    surface_pressure_psi: Optional[float] = Field(
+        None, description="Surface pressure at this rate in PSI"
+    )
+
+
+class DiagnosticData(BaseModel):
+    step_rate_tests: list[StepRateTest] = Field(
+        default_factory=list, description="Step-rate test data points"
+    )
+    breakdown_pressure_psi: Optional[float] = Field(
+        None, description="Formation breakdown pressure in PSI"
+    )
+    isip_psi: Optional[float] = Field(
+        None, description="Instantaneous shut-in pressure in PSI"
+    )
+    closure_pressure_psi: Optional[float] = Field(
+        None, description="Fracture closure pressure in PSI"
+    )
+    dfit_notes: Optional[str] = Field(
+        None, description="DFIT / leakoff interpretation notes"
+    )
+
+
+class WaterAnalysis(BaseModel):
+    sample_date: Optional[str] = Field(None, description="Sample collection date")
+    sample_temp_f: Optional[float] = Field(None, description="Sample temperature in F")
+    ph: Optional[float] = Field(None, description="pH of the water sample")
+    rw_ohm_m: Optional[float] = Field(
+        None, description="Formation water resistivity in ohm-m"
+    )
+    tds_mg_l: Optional[float] = Field(
+        None, description="Total dissolved solids in mg/L"
+    )
+    na_mg_l: Optional[float] = Field(None, description="Sodium in mg/L")
+    ca_mg_l: Optional[float] = Field(None, description="Calcium in mg/L")
+    mg_mg_l: Optional[float] = Field(None, description="Magnesium in mg/L")
+    ba_mg_l: Optional[float] = Field(None, description="Barium in mg/L")
+    sr_mg_l: Optional[float] = Field(None, description="Strontium in mg/L")
+    so4_mg_l: Optional[float] = Field(None, description="Sulfate in mg/L")
+    cl_mg_l: Optional[float] = Field(None, description="Chloride in mg/L")
+    hco3_mg_l: Optional[float] = Field(None, description="Bicarbonate in mg/L")
+
+
+class GasMoleFractions(BaseModel):
+    c1: Optional[float] = Field(None, description="Methane mole fraction")
+    c2: Optional[float] = Field(None, description="Ethane mole fraction")
+    c3: Optional[float] = Field(None, description="Propane mole fraction")
+    ic4: Optional[float] = Field(None, description="Iso-butane mole fraction")
+    nc4: Optional[float] = Field(None, description="Normal butane mole fraction")
+    ic5: Optional[float] = Field(None, description="Iso-pentane mole fraction")
+    nc5: Optional[float] = Field(None, description="Normal pentane mole fraction")
+    c6: Optional[float] = Field(None, description="Hexanes mole fraction")
+    c7plus: Optional[float] = Field(None, description="Heptanes-plus mole fraction")
+    n2: Optional[float] = Field(None, description="Nitrogen mole fraction")
+    co2: Optional[float] = Field(None, description="CO2 mole fraction")
+    h2s: Optional[float] = Field(None, description="H2S mole fraction")
+
+
+class FluidPvt(BaseModel):
+    gas_mole_fractions: Optional[GasMoleFractions] = None
+    gas_gravity: Optional[float] = Field(None, description="Gas specific gravity")
+    btu_scf: Optional[float] = Field(None, description="Gas heating value in BTU/SCF")
+    oil_api_gravity: Optional[float] = Field(None, description="Oil API gravity")
+    bubble_point_psi: Optional[float] = Field(
+        None, description="Measured bubble point pressure in PSI"
+    )
+    reservoir_temp_f: Optional[float] = Field(
+        None, description="Reservoir temperature in F"
+    )
+    water_cut_pct: Optional[float] = Field(None, description="Water cut in percent")
+
+
+class SwabEntry(BaseModel):
+    hour: Optional[int] = Field(None, description="Elapsed hour")
+    fluid_recovered_bbls: Optional[float] = Field(
+        None, description="Cumulative fluid recovered in barrels"
+    )
+    choke_inches: Optional[float] = Field(None, description="Choke size in inches")
+    flowing_pressure_psi: Optional[float] = Field(
+        None, description="Surface flowing pressure in PSI"
+    )
+
+
+class ProppantFlowbackEntry(BaseModel):
+    volume_bbls: Optional[float] = Field(
+        None, description="Proppant flowback volume in barrels"
+    )
+    mesh_size: Optional[str] = Field(None, description="Mesh size of returned proppant")
+    description: Optional[str] = Field(None, description="Description / notes")
+
+
+class FlowbackData(BaseModel):
+    swab_tally: list[SwabEntry] = Field(
+        default_factory=list, description="Hourly swab / flowback tally"
+    )
+    cumulative_load_recovered_bbls: Optional[float] = Field(
+        None, description="Total frac load returned in barrels"
+    )
+    proppant_flowback: list[ProppantFlowbackEntry] = Field(
+        default_factory=list, description="Solids / sand ingress records"
+    )
+    flowback_notes: Optional[str] = Field(None, description="Flowback narrative notes")
+
+
+class SurveyPoint(BaseModel):
+    md_ft: float = Field(description="Measured depth in feet")
+    inclination_deg: float = Field(description="Inclination in degrees")
+    azimuth_deg: float = Field(description="Azimuth in degrees")
+    tvd_ft: Optional[float] = Field(None, description="True vertical depth in feet")
+    dls_deg_per_100ft: Optional[float] = Field(
+        None, description="Dogleg severity in deg/100ft"
+    )
+
+
+class DirectionalSurvey(BaseModel):
+    survey_points: list[SurveyPoint] = Field(
+        default_factory=list,
+        description="Full MWD survey station table (do not truncate)",
+    )
+    max_dls_deg_per_100ft: Optional[float] = Field(
+        None, description="Maximum DLS across the well"
+    )
+    lateral_max_dls_deg_per_100ft: Optional[float] = Field(
+        None, description="Maximum DLS in the lateral section"
+    )
+
+
 class WellfileExtractionPayload(BaseModel):
     completion_stimulation: Optional[CompletionStimulationData] = None
     geology: Optional[GeologyData] = None
     casing_cement: Optional[CasingCementData] = None
     drilling: Optional[DrillingData] = None
+    diagnostics: Optional[DiagnosticData] = None
+    water_chemistry: Optional[WaterAnalysis] = None
+    fluid_pvt: Optional[FluidPvt] = None
+    flowback: Optional[FlowbackData] = None
+    directional_survey: Optional[DirectionalSurvey] = None
 
 
 # ---------------------------------------------------------------------------

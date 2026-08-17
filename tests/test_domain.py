@@ -1,6 +1,7 @@
-import pytest
 import numpy as np
-from mt_oil.domain.decline_curve import fit_best_decline, arps_decline
+import pytest
+
+from mt_oil.domain.decline_curve import arps_decline, fit_best_decline
 from mt_oil.domain.economics import calculate_npv
 
 
