@@ -26,7 +26,7 @@ from mt_oil.domain import flowback, pvt, scaling, stress, tortuosity
 
 logger = logging.getLogger(__name__)
 
-diag_limiter = Limiter(key_func=lambda r: get_remote_address(r))
+diag_limiter = Limiter(key_func=lambda request: get_remote_address(request))
 router = APIRouter(prefix="/wells/{api_number}/diagnostics", tags=["diagnostics"])
 
 SECTION_TOOLS = {

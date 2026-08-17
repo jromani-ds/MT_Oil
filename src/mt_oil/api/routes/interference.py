@@ -17,7 +17,7 @@ from mt_oil.domain.interference import detect_frac_hits, find_offset_wells
 
 logger = logging.getLogger(__name__)
 
-int_limiter = Limiter(key_func=lambda r: get_remote_address(r))
+int_limiter = Limiter(key_func=lambda request: get_remote_address(request))
 router = APIRouter(prefix="/wells/{api_number}/interference", tags=["interference"])
 
 _bq_loader: BigQueryDataLoader | None = None

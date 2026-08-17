@@ -26,7 +26,7 @@ from mt_oil.schemas.wellfile import (
 
 logger = logging.getLogger(__name__)
 
-agent_limiter = Limiter(key_func=lambda r: get_remote_address(r))
+agent_limiter = Limiter(key_func=lambda request: get_remote_address(request))
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
