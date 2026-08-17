@@ -187,7 +187,12 @@ def _read_payload_from_bq(api_number: str) -> Optional[dict]:
         if payload is None:
             return None
         if isinstance(payload, str):
-            payload = json.loads(payload)
+            try:
+                payload = json.loads(payload)
+            except json.JSONDecodeError:
+                return None
+        if not isinstance(payload, dict):
+            return None
         return payload
     except Exception as exc:
         logger.warning("BQ payload read failed for %s: %s", api_number, exc)
@@ -198,6 +203,8 @@ def _check_bq_cache_section(api_number: str, section_name: str) -> Optional[dict
     """Return the cached section dict or None."""
     payload = _read_payload_from_bq(api_number)
     if payload is None:
+        return None
+    if not isinstance(payload, dict):
         return None
     section = payload.get(section_name)
     if section is None:
