@@ -8,25 +8,25 @@ Full-stack Oil & Gas analytics application built as a public portfolio / showcas
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    subgraph Repo["Public Repo"]
+        FE["frontend/ — React + Vite + TS + Tailwind"]
+        BE["src/mt_oil/ — FastAPI, domain, data loaders"]
+        TF["infra/ — Terraform modules"]
+        CI[".github/ — Actions + WIF"]
+    end
+
+    Repo --> GCS_SITE["GCS Static Website<br/>(static frontend)"]
+    Repo --> CR["Cloud Run<br/>(FastAPI backend)"]
+    Repo --> BQ_GCS["BigQuery + GCS<br/>(data warehouse + lake)"]
+
+    style GCS_SITE fill:#4285f4,color:#fff
+    style CR fill:#4285f4,color:#fff
+    style BQ_GCS fill:#4285f4,color:#fff
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                              Public Repo                                │
-├────────────────────────────────────────────────────────────────────────┤
-│  frontend/          React + Vite + TypeScript + Tailwind CSS          │
-│  src/mt_oil/        FastAPI backend, domain logic, data loaders        │
-│  tests/             pytest + FastAPI TestClient                        │
-│  infra/             Terraform modules and environment configurations   │
-│  scripts/           One-off data seed and operational scripts          │
-│  .github/           GitHub Actions CI/CD with Workload Identity      │
-└────────────────────────────────────────────────────────────────────────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        ▼                     ▼                     ▼
-  GCS static website    Cloud Run            BigQuery + GCS
-  (static frontend)     (FastAPI backend)    (data warehouse + lake)
 
 > Note: Firebase Hosting was replaced by a Cloud Storage static website bucket because the Firebase Management API was not provisionable in this GCP project under Terraform. The unused `firebase_hosting` Terraform module has been removed from the repository.
-```
 
 ## Tech Stack
 
@@ -46,6 +46,16 @@ Full-stack Oil & Gas analytics application built as a public portfolio / showcas
 5. **Terraform**: never apply locally to shared environments; use CI/CD or review `terraform plan` carefully.
 
 ## Common Commands
+
+```mermaid
+flowchart LR
+    PR_MERGE["PR merged to dev"] --> CI["GitHub Actions"]
+    CI --> AUTH["WIF authenticate<br/>no stored keys"]
+    AUTH --> BUILD["docker build + push<br/>Artifact Registry"]
+    BUILD --> DEPLOY["gcloud run deploy"]
+    DEPLOY --> CR["Cloud Run<br/>mt-oil-api-dev"]
+    DEPLOY --> STATIC["GCS upload<br/>static frontend"]
+```
 
 ```bash
 # Backend

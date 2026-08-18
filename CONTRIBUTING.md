@@ -6,6 +6,17 @@ Thank you for your interest in contributing to the MT Oil project! We welcome co
 
 This project follows a `feature → dev → main` branching model. Direct pushes to `dev` and `main` are blocked.
 
+```mermaid
+flowchart TD
+    DEV["dev branch"] -->|"git checkout -b"| FEAT["feature/* branch"]
+    FEAT -->|"code + tests +<br/>pre-commit hooks"| PR1["PR to dev"]
+    PR1 -->|"CI checks pass<br/>1 review required"| MERGE1["Merge to dev"]
+    MERGE1 -->|"auto-deploy"| DEPLOY_DEV["Dev environment"]
+    MERGE1 -->|"PR to main"| PR2["PR dev → main"]
+    PR2 -->|"CI + manual<br/>Terraform approve"| MERGE2["Merge to main"]
+    MERGE2 -->|"deploy"| PROD["Prod environment"]
+```
+
 1.  **Clone**: Fork or clone the repository locally.
 2.  **Environment Setup**:
     ```bash

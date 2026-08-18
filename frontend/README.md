@@ -3,6 +3,24 @@
 React 19 + Vite + TypeScript + Tailwind CSS v4 dashboard for the MT Oil Analytics
 Platform. Built with Recharts (charts), react-leaflet (maps), and Lucide (icons).
 
+## Component Hierarchy
+
+```mermaid
+graph TD
+    DASH["Dashboard"] --> HDR["Header"]
+    DASH --> SIDEBAR["MapSidebar"]
+    DASH --> MAP["MapComponent"]
+    DASH --> WELLFILE["WellfileAnalysis"]
+    DASH --> DC["DeclineCurve"]
+    DASH --> ECON["Economics"]
+    DASH --> STIM["ReconciledStimulationPanel"]
+    DASH --> DIAG["DiagnosticsPanel"]
+    MAP --> GIS["GisLayers"]
+    MAP --> TOGGLE["LayerToggle"]
+    WELLFILE --> KPI["KpiCard"]
+    STIM --> KPI
+```
+
 ## Key Components
 
 | Component          | File                                  | Description                                   |

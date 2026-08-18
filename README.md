@@ -28,13 +28,39 @@ A professional full-stack application for Oil & Gas data analysis, featuring adv
 
 ## Architecture
 
-```
-frontend/          React + Vite + TypeScript + Tailwind CSS
-src/mt_oil/        FastAPI backend, domain logic, data loaders
-tests/             pytest + FastAPI TestClient; frontend Vitest suite
-infra/             Terraform modules and environment configurations
-scripts/           One-off data seed and operational scripts
-.github/           GitHub Actions CI/CD with Workload Identity Federation
+```mermaid
+flowchart TD
+    subgraph Repo["Repository"]
+        direction LR
+        FE["frontend/<br/>React + Vite + TS"]
+        BE["src/mt_oil/<br/>FastAPI"]
+        TF["infra/<br/>Terraform"]
+        CI[".github/<br/>CI/CD Actions"]
+    end
+
+    subgraph GCP["Google Cloud Platform"]
+        direction TB
+        GCS_SITE["GCS Static Website<br/>(frontend hosting)"]
+        CR["Cloud Run<br/>(API service)"]
+        BQ["BigQuery<br/>(data warehouse)"]
+        GCS_DATA["GCS Data Lake"]
+        CR_JOBS["Cloud Run Jobs<br/>(monthly ETL)"]
+    end
+
+    subgraph Sources["Data Sources"]
+        DNRC["Montana DNRC<br/>(.tab files)"]
+        FF["FracFocus<br/>Registry"]
+        SHP["MBOGC<br/>Shapefiles"]
+    end
+
+    User["User Browser"] --> GCS_SITE
+    GCS_SITE --> CR
+    CR --> BQ
+    CR --> GCS_DATA
+    CI --> CR
+    CI --> GCS_SITE
+    TF -.-> GCP
+    Sources --> CR_JOBS --> BQ
 ```
 
 - **Backend**: Python (FastAPI) with in-memory Pandas analytics, BigQuery loaders, and an optional scikit-learn forecasting pipeline.
@@ -162,6 +188,15 @@ npm run test
 ```
 
 ### Deployment Flow
+
+```mermaid
+flowchart LR
+    F["feature branch"] -->|PR| DEV["dev branch"]
+    DEV -->|CI: test + lint + plan| DEV
+    DEV -->|PR| MAIN["main branch"]
+    MAIN -->|CI + manual approve| PROD["Deploy to Prod"]
+    DEV -->|CI auto-deploy| DEPLOY_DEV["Deploy to Dev"]
+```
 
 1. Cut a feature branch from `dev`.
 2. Open a PR to `dev`.
