@@ -6,6 +6,23 @@ CI/CD authentication.
 
 ## Layout
 
+```mermaid
+flowchart TD
+    BOOTSTRAP["bootstrap/<br/>bootstrap.sh"] --> ENABLE["enable_apis module<br/>enable GCP APIs"]
+    BOOTSTRAP --> STATE_BUCKET["GCS state bucket"]
+
+    ENV["environments/{dev,prod}/<br/>main.tf"] --> CR["cloud_run module<br/>(API service)"]
+    ENV --> JOB["cloud_run_job module<br/>(FracFocus, PDF, GIS, batch)"]
+    ENV --> SCHED["cloud_scheduler module<br/>(monthly triggers)"]
+    ENV --> BQ["bigquery module<br/>(datasets + tables)"]
+    ENV --> GCS["gcs module<br/>(data lake + static site)"]
+    ENV --> SA["service accounts + IAM"]
+    ENV --> MON["monitoring module<br/>(budget alerts)"]
+    ENV --> SM["secret_manager module"]
+
+    SCHED --> JOB
+```
+
 ```
 infra/
   bootstrap/              One-time bootstrap script (run locally)

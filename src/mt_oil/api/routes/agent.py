@@ -213,8 +213,49 @@ async def process_wellfile(request: Request, body: WellfileAgentRequest):
             cache_hit=False,
         )
 
-    result = _parse_agent_response(api_number, final_text)
-    return result
+    # Agent ran successfully (tools persisted sections to BQ).
+    # Re-read payload from BQ to build completion_specs + wellfile_data.
+    payload = _read_payload_from_bq(api_number)
+    if payload and isinstance(payload, dict):
+        flat = _flat_from_payload(payload)
+        completion = _build_completion_specs(api_number, flat)
+        try:
+            wellfile_data = WellfileExtractionPayload(**payload)
+        except Exception as exc:
+            logger.warning("Failed to parse payload for %s: %s", api_number, exc)
+            wellfile_data = None
+    else:
+        flat = {}
+        completion = None
+        wellfile_data = None
+
+    try:
+        production_data = bq_production_tool(api_number)
+        production_summary = (
+            _build_production_summary(production_data)
+            if production_data
+            else _build_production_summary({})
+        )
+    except Exception as exc:
+        logger.warning("Failed to fetch production for %s: %s", api_number, exc)
+        production_summary = _build_production_summary({})
+
+    proppant_int, fluid_int = _compute_intensity(
+        completion.model_dump() if completion else {}
+    )
+    extraction_status = "SUCCESS" if completion else "FAILED_PARSING"
+
+    return WellfileAgentResponse(
+        api_number=api_number,
+        extraction_status=extraction_status,
+        cache_hit=False,
+        completion_specs=completion,
+        production_summary=production_summary,
+        proppant_intensity_lbs_per_ft=proppant_int,
+        fluid_intensity_bbls_per_ft=fluid_int,
+        well_name=flat.get("well_name"),
+        wellfile_data=wellfile_data,
+    )
 
 
 def _parse_agent_response(api_number: str, text: str) -> WellfileAgentResponse:

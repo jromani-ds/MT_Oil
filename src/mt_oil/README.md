@@ -3,6 +3,24 @@
 FastAPI application for Oil & Gas well analytics. Serves the dashboard API,
 runs Decline Curve Analysis (DCA), economic modeling, and ML forecasting.
 
+## Request Flow
+
+```mermaid
+flowchart LR
+    REQ["HTTP Request"] --> RL["Rate Limiter<br/>(SlowAPI)"]
+    RL --> ROUTER["API Router"]
+    ROUTER --> WELLFILE["/agent/wellfile<br/>(ADK agent + Gemini)"]
+    ROUTER --> DCA["/wells/{api}/decline<br/>(scipy optimize)"]
+    ROUTER --> ECON["/wells/{api}/economics<br/>(NPV/ROI/payout)"]
+    ROUTER --> STIM["/wells/{api}/stimulation<br/>(reconciliation + sanity)"]
+    ROUTER --> DIAG["/wells/{api}/diagnostics<br/>(on-demand extraction)"]
+    ROUTER --> DATA["/wells, /filters, etc.<br/>(BQ queries)"]
+    WELLFILE --> BQ["BigQuery<br/>cache + production"]
+    DCA --> BQ
+    ECON --> DCA
+    DATA --> BQ
+```
+
 ## Package Layout
 
 ```

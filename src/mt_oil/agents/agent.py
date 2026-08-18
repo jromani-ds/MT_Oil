@@ -15,7 +15,7 @@ from mt_oil.agents.tools.document import (
 )
 from mt_oil.agents.tools.production import bq_production_tool
 from mt_oil.config import settings
-from mt_oil.schemas.wellfile import WellfileAgentResponse
+from mt_oil.schemas.wellfile import AgentOutputSchema
 
 INSTRUCTION = """You are a petroleum engineering analyst. Your job is to analyze a well's completion, geology, casing/cement, drilling, and production data.
 
@@ -46,7 +46,7 @@ wellfile_agent = Agent(
         wellfile_drilling_tool,
         bq_production_tool,
     ],
-    output_schema=WellfileAgentResponse,
+    output_schema=AgentOutputSchema,
     generate_content_config=types.GenerateContentConfig(
         temperature=0.0,
     ),
