@@ -1,6 +1,5 @@
 """FastAPI route for the wellfile agent endpoint."""
 
-import json
 import logging
 
 from fastapi import APIRouter, Request
@@ -96,6 +95,50 @@ def _build_completion_specs(api_number: str, flat: dict) -> CompletionSpecs:
         total_proppant_lbs=flat.get("total_proppant_lbs"),
         max_treating_pressure_psi=flat.get("max_treating_pressure_psi"),
         casing_intermediate_depth_ft=flat.get("casing_intermediate_depth_ft"),
+    )
+
+
+def _build_response_from_bq(api_number: str, cache_hit: bool) -> WellfileAgentResponse:
+    payload = _read_payload_from_bq(api_number)
+    if payload and isinstance(payload, dict):
+        flat = _flat_from_payload(payload)
+        completion = _build_completion_specs(api_number, flat)
+        try:
+            wellfile_data = WellfileExtractionPayload(**payload)
+        except Exception as exc:
+            logger.warning("Failed to parse payload for %s: %s", api_number, exc)
+            wellfile_data = None
+    else:
+        flat = {}
+        completion = None
+        wellfile_data = None
+
+    try:
+        production_data = bq_production_tool(api_number)
+        production_summary = (
+            _build_production_summary(production_data)
+            if production_data
+            else _build_production_summary({})
+        )
+    except Exception as exc:
+        logger.warning("Failed to fetch production for %s: %s", api_number, exc)
+        production_summary = _build_production_summary({})
+
+    proppant_int, fluid_int = _compute_intensity(
+        completion.model_dump() if completion else {}
+    )
+    extraction_status = "SUCCESS" if completion else "FAILED_PARSING"
+
+    return WellfileAgentResponse(
+        api_number=api_number,
+        extraction_status=extraction_status,
+        cache_hit=cache_hit,
+        completion_specs=completion,
+        production_summary=production_summary,
+        proppant_intensity_lbs_per_ft=proppant_int,
+        fluid_intensity_bbls_per_ft=fluid_int,
+        well_name=flat.get("well_name"),
+        wellfile_data=wellfile_data,
     )
 
 
@@ -207,122 +250,5 @@ async def process_wellfile(request: Request, body: WellfileAgentRequest):
             api_number,
             agent_error or "empty final text",
         )
-        return WellfileAgentResponse(
-            api_number=api_number,
-            extraction_status="FAILED_PARSING",
-            cache_hit=False,
-        )
 
-    # Agent ran successfully (tools persisted sections to BQ).
-    # Re-read payload from BQ to build completion_specs + wellfile_data.
-    payload = _read_payload_from_bq(api_number)
-    if payload and isinstance(payload, dict):
-        flat = _flat_from_payload(payload)
-        completion = _build_completion_specs(api_number, flat)
-        try:
-            wellfile_data = WellfileExtractionPayload(**payload)
-        except Exception as exc:
-            logger.warning("Failed to parse payload for %s: %s", api_number, exc)
-            wellfile_data = None
-    else:
-        flat = {}
-        completion = None
-        wellfile_data = None
-
-    try:
-        production_data = bq_production_tool(api_number)
-        production_summary = (
-            _build_production_summary(production_data)
-            if production_data
-            else _build_production_summary({})
-        )
-    except Exception as exc:
-        logger.warning("Failed to fetch production for %s: %s", api_number, exc)
-        production_summary = _build_production_summary({})
-
-    proppant_int, fluid_int = _compute_intensity(
-        completion.model_dump() if completion else {}
-    )
-    extraction_status = "SUCCESS" if completion else "FAILED_PARSING"
-
-    return WellfileAgentResponse(
-        api_number=api_number,
-        extraction_status=extraction_status,
-        cache_hit=False,
-        completion_specs=completion,
-        production_summary=production_summary,
-        proppant_intensity_lbs_per_ft=proppant_int,
-        fluid_intensity_bbls_per_ft=fluid_int,
-        well_name=flat.get("well_name"),
-        wellfile_data=wellfile_data,
-    )
-
-
-def _parse_agent_response(api_number: str, text: str) -> WellfileAgentResponse:
-    """Parse the ADK agent's JSON response into a WellfileAgentResponse."""
-    try:
-        if text.startswith("```"):
-            text = text.strip("`").strip()
-            if text.startswith("json"):
-                text = text[4:].strip()
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        logger.warning("Agent returned invalid JSON for %s", api_number)
-        return WellfileAgentResponse(
-            api_number=api_number,
-            extraction_status="FAILED_PARSING",
-            cache_hit=False,
-        )
-
-    # Build flat completion_specs
-    specs_data = (
-        data.get("completion_specs") or data.get("completion_parameters") or data
-    )
-    try:
-        completion = CompletionSpecs(**specs_data) if specs_data else None
-    except Exception as exc:
-        logger.warning("Failed to parse completion specs: %s", exc)
-        completion = None
-
-    # Build wellfile_data from the agent output
-    wellfile_data_raw = data.get("wellfile_data")
-    if wellfile_data_raw and isinstance(wellfile_data_raw, dict):
-        try:
-            wellfile_data = WellfileExtractionPayload(**wellfile_data_raw)
-        except Exception as exc:
-            logger.warning("Failed to parse wellfile_data: %s", exc)
-            wellfile_data = None
-    else:
-        # Try to assemble wellfile_data from top-level keys (agent may flatten)
-        sections = {}
-        for key in ("completion_stimulation", "geology", "casing_cement", "drilling"):
-            if key in data:
-                sections[key] = data[key]
-        if sections:
-            try:
-                wellfile_data = WellfileExtractionPayload(**sections)
-            except Exception:
-                wellfile_data = None
-        else:
-            wellfile_data = None
-
-    prod_data = data.get("production_summary") or data.get("production_data") or {}
-    production_summary = _build_production_summary(prod_data)
-
-    extraction_status = data.get("extraction_status", "SUCCESS")
-    cache_hit = data.get("cache_hit", False)
-
-    specs_dict = completion.model_dump() if completion else {}
-    proppant_int, fluid_int = _compute_intensity(specs_dict)
-
-    return WellfileAgentResponse(
-        api_number=api_number,
-        extraction_status=extraction_status,
-        cache_hit=cache_hit,
-        completion_specs=completion,
-        production_summary=production_summary,
-        proppant_intensity_lbs_per_ft=proppant_int,
-        fluid_intensity_bbls_per_ft=fluid_int,
-        well_name=specs_dict.get("well_name"),
-        wellfile_data=wellfile_data,
-    )
+    return _build_response_from_bq(api_number, cache_hit=False)
