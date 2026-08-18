@@ -501,6 +501,19 @@ class WellfileExtractionPayload(BaseModel):
     directional_survey: Optional[DirectionalSurvey] = None
 
 
+class AgentOutputSchema(BaseModel):
+    """Minimal output schema for the ADK agent.
+
+    Keeps the structured output request lightweight enough for Gemini's
+    constrained decoding. The full wellfile_data is read from BigQuery after
+    the agent runs (the tools persist each section independently).
+    """
+
+    api_number: str
+    extraction_status: str = "SUCCESS"
+    cache_hit: bool = False
+
+
 # ---------------------------------------------------------------------------
 # Existing schemas (kept for backward compatibility)
 # ---------------------------------------------------------------------------
