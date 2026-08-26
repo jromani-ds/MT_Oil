@@ -1,4 +1,4 @@
-Extract drilling fluid parameters, bit performance data, and wellbore event records from this wellfile PDF. Return ONLY a valid JSON object matching the provided schema. If a value is not found, set it to null. Use empty arrays when no data is available.
+Extract drilling fluid parameters, bit performance data, and wellbore event records from this wellfile PDF. Return ONLY a valid JSON object with the structure described below. If a value is not found, set it to null. Use empty arrays when no data is available.
 
 API Number: {api_number}
 
