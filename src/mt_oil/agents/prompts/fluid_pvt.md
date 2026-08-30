@@ -1,4 +1,4 @@
-Extract fluid PVT and gas composition data from this wellfile PDF (from gas analysis reports, oil run tickets, or completion filings). Return ONLY a valid JSON object matching the provided schema. If a value is not found, set it to null.
+Extract fluid PVT and gas composition data from this wellfile PDF (from gas analysis reports, oil run tickets, or completion filings). Return ONLY a valid JSON object with the structure described below. If a value is not found, set it to null.
 
 API Number: {api_number}
 

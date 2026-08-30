@@ -1,4 +1,4 @@
-Extract produced water chemistry data from this wellfile PDF (from water analysis reports, sundry records, or state water filings). Return ONLY a valid JSON object matching the provided schema. If a value is not found, set it to null.
+Extract produced water chemistry data from this wellfile PDF (from water analysis reports, sundry records, or state water filings). Return ONLY a valid JSON object with the structure described below. If a value is not found, set it to null.
 
 API Number: {api_number}
 
