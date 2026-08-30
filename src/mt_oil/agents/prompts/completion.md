@@ -1,4 +1,4 @@
-Extract the following completion, stimulation, and downhole tubular parameters from this wellfile PDF. Return ONLY a valid JSON object matching the provided schema. If a value is not found or illegible, set it to null. Use empty arrays when no data is available.
+Extract the following completion, stimulation, and downhole tubular parameters from this wellfile PDF. Return ONLY a valid JSON object with the structure described below. If a value is not found or illegible, set it to null. Use empty arrays when no data is available.
 
 API Number: {api_number}
 

@@ -1,4 +1,4 @@
-Extract flowback and load recovery data from this wellfile PDF (from swab / flowback logs and service company workover tickets). Return ONLY a valid JSON object matching the provided schema. If a value is not found, set it to null. Use empty arrays when no data is available.
+Extract flowback and load recovery data from this wellfile PDF (from swab / flowback logs and service company workover tickets). Return ONLY a valid JSON object with the structure described below. If a value is not found, set it to null. Use empty arrays when no data is available.
 
 API Number: {api_number}
 
