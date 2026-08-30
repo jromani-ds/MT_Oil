@@ -20,6 +20,7 @@ import google.cloud.bigquery as bigquery
 from google.cloud import storage
 from google.genai import Client as GenaiClient
 from google.genai import types as genai_types
+from pydantic import ValidationError
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from mt_oil.agents.telemetry import Timer, emit_agent_telemetry
@@ -348,7 +349,12 @@ def _extract_section(
     response_schema,
     prompt: str,
 ) -> dict:
-    """Generic Gemini extraction helper."""
+    """Generic Gemini extraction helper.
+
+    Uses response_mime_type="application/json" without response_schema to avoid
+    Gemini INVALID_ARGUMENT errors when the Pydantic schema generates too many
+    constraint states. Validation is performed client-side after extraction.
+    """
     client = GenaiClient(
         project=settings.gcp_project_id,
         location=settings.vertex_ai_location,
@@ -362,15 +368,22 @@ def _extract_section(
         config=genai_types.GenerateContentConfig(
             temperature=0.0,
             response_mime_type="application/json",
-            response_schema=response_schema,
         ),
     )
     text = response.text
     if not text:
         raise ValueError("Gemini returned empty response")
     data = json.loads(text)
-    specs = response_schema(**data)
-    return specs.model_dump(exclude_none=True)
+    try:
+        specs = response_schema(**data)
+        return specs.model_dump(exclude_none=True)
+    except ValidationError as exc:
+        logger.warning(
+            "Pydantic validation failed for %s: %s — returning raw JSON",
+            api_number,
+            exc,
+        )
+        return data
 
 
 # -- Priority 1: Completion / Stimulation / Downhole Tubulars --
