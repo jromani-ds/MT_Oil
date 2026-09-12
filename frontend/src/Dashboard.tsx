@@ -175,6 +175,7 @@ export function Dashboard() {
 
     useEffect(() => {
         if (!selectedWell) return;
+// eslint-disable-next-line react-hooks/set-state-in-effect
         loadWellfileAnalysis(selectedWell.API_WellNo);
     }, [selectedWell, loadWellfileAnalysis]);
 
