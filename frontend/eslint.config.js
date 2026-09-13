@@ -8,7 +8,6 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores(['dist']),
   {
-    name: 'mt-oil/typescript',
     files: ['**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,
@@ -17,6 +16,7 @@ export default defineConfig([
       reactRefresh.configs.vite,
     ],
     languageOptions: {
+      ecmaVersion: 2020,
       globals: globals.browser,
     },
   },

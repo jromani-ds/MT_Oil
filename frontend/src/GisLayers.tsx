@@ -115,6 +115,7 @@ function useGeoJsonData(layerKey: keyof GisLayerState, visible: boolean): GeoDat
             return () => { cancelled = true; };
         } else if (!visible && prevVisible.current) {
             prevVisible.current = false;
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setData({ data: null, featureCount: 0 });
         }
     }, [layerKey, visible]);
